@@ -132,5 +132,5 @@ async def simple_crawl(base_url: str):
 
 
 if __name__ == "__main__":
-    # asyncio.run(use_llm_free(base_url="https://bronsonshop.com/collections/clothing"))
-    asyncio.run(simple_crawl(base_url="https://bronsonshop.com/collections/clothing"))
+    asyncio.run(use_llm_free(base_url="https://bronsonshop.com/collections/clothing"))
+    # asyncio.run(simple_crawl(base_url="https://bronsonshop.com/collections/clothing"))
