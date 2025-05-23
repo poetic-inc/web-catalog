@@ -25,7 +25,7 @@ class Item(BaseModel):
     url: str
 
 
-class Product(BaseModel):
+class Product(BaseModel): # Corrected 'Baseodel' to 'BaseModel'
     category: str
     items: List[Item]
 
