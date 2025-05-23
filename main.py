@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
 from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
+from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
 
 from prompt import PROMPT
 
@@ -46,10 +47,22 @@ async def use_llm_free(base_url: str):
 
     all_extracted_data: List[ResponseModel] = []
 
+    # Define a URL filter for pagination links
+    # This will only allow URLs that match the base_url followed by "?page="
+    # and also the base_url itself to ensure the initial page is crawled.
+    # The pattern `*?page=*` allows for variations in the base URL if it already contains query params.
+    # To be more precise for the given example, we can use f"{base_url}?page=*"
+    # and ensure the base_url itself is always processed by the crawler initially.
+    # The crawler will always process the initial URL provided to arun().
+    # The filter_chain applies to links *found* on pages.
+    url_filter = URLPatternFilter(patterns=[f"{base_url}?page=*"])
+    filter_chain = FilterChain(filters=[url_filter])
+
     crawl_strategy = BFSDeepCrawlStrategy(
-        max_depth=2,
-        max_pages=10,
+        max_depth=2,  # Adjust max_depth as needed for the number of pages
+        max_pages=10, # Adjust max_pages as needed
         include_external=False,
+        filter_chain=filter_chain,
     )
 
     crawl_config = CrawlerRunConfig(
