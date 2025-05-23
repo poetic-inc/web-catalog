@@ -47,14 +47,6 @@ async def use_llm_free(base_url: str):
 
     all_extracted_data: List[ResponseModel] = []
 
-    # Define a URL filter for pagination links
-    # This will only allow URLs that match the base_url followed by "?page="
-    # and also the base_url itself to ensure the initial page is crawled.
-    # The pattern `*?page=*` allows for variations in the base URL if it already contains query params.
-    # To be more precise for the given example, we can use f"{base_url}?page=*"
-    # and ensure the base_url itself is always processed by the crawler initially.
-    # The crawler will always process the initial URL provided to arun().
-    # The filter_chain applies to links *found* on pages.
     url_filter = URLPatternFilter(patterns=[f"{base_url}?page=*"])
     filter_chain = FilterChain(filters=[url_filter])
 
@@ -107,7 +99,6 @@ async def use_llm_free(base_url: str):
                     print(
                         f"Error calling Gemini API or processing response for {current_url}: {e}"
                     )
-                    # Continue to the next page even if one fails
             else:
                 print(
                     f"No HTML content extracted from {current_url}. Skipping LLM processing for this page."
