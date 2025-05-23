@@ -3,7 +3,8 @@ import json
 import os
 from typing import List
 
-from google import genai, types
+from google import genai
+from google.genai import types
 from pydantic import BaseModel
 
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
@@ -45,13 +46,10 @@ async def use_llm_free(base_url: str):
 
     all_extracted_data: List[ResponseModel] = []
 
-    # Configure deep crawling to discover multiple pages, including pagination.
-    # max_depth=2 allows crawling the initial page and links found on it (e.g., pagination, product detail pages).
-    # max_pages=10 limits the total number of pages crawled to prevent excessively long runs for testing.
     crawl_strategy = BFSDeepCrawlStrategy(
         max_depth=2,
         max_pages=10,
-        include_external=False,  # Stay within the same domain
+        include_external=False,
     )
 
     crawl_config = CrawlerRunConfig(
@@ -62,7 +60,6 @@ async def use_llm_free(base_url: str):
 
     async with AsyncWebCrawler() as crawler:
         print(f"Starting deep scrape from {base_url}")
-        # crawl4ai will now handle discovering and crawling subsequent pages, including pagination links.
         results = await crawler.arun(base_url, config=crawl_config)
 
         if not results:
@@ -73,7 +70,7 @@ async def use_llm_free(base_url: str):
 
         for res in results:
             scraped_content = res.html
-            current_url = res.url  # Get the URL of the current scraped page
+            current_url = res.url
 
             if scraped_content:
                 print(
@@ -90,13 +87,8 @@ async def use_llm_free(base_url: str):
                             system_instruction=PROMPT,
                         ),
                     )
-                    # Parse the JSON string into the ResponseModel Pydantic object
                     json_data = json.loads(response.text)
-                    parsed_response = ResponseModel(**json_data)
-                    # Override page_url with the actual URL from the crawler result for accuracy
-                    parsed_response.page_url = current_url
-
-                    all_extracted_data.append(parsed_response)
+                    all_extracted_data.append(json_data)
 
                 except Exception as e:
                     print(
@@ -123,11 +115,12 @@ async def use_llm_free(base_url: str):
         print("No data was extracted from any page.")
 
 
-async def simple_crawl(url: str):
+async def simple_crawl(base_url: str):
     async with AsyncWebCrawler() as crawler:
-        res = await crawler.arun(url)
+        res = await crawler.arun(base_url)
         print(res.markdown)
 
 
 if __name__ == "__main__":
-    asyncio.run(use_llm_free(base_url="https://bronsonshop.com/collections/clothing"))
+    # asyncio.run(use_llm_free(base_url="https://bronsonshop.com/collections/clothing"))
+    asyncio.run(simple_crawl(base_url="https://bronsonshop.com/collections/clothing"))
