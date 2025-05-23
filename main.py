@@ -51,8 +51,8 @@ async def use_llm_free(base_url: str):
     filter_chain = FilterChain(filters=[url_filter])
 
     crawl_strategy = DFSDeepCrawlStrategy(
-        max_depth=2,  # Adjust max_depth as needed for the number of pages
-        max_pages=10, # Adjust max_pages as needed
+        max_depth=15,  # Adjust max_depth as needed for the number of pages
+        max_pages=15, # Adjust max_pages as needed
         include_external=False,
         filter_chain=filter_chain,
     )
