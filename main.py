@@ -34,8 +34,7 @@ class ResponseModel(BaseModel):
     page_url: str
     page_name: str
     products: List[Product]
-    pages: List[Page]
-    pagination: str
+    # pagination: str
 
 
 async def use_llm_free(base_url: str):
@@ -74,7 +73,7 @@ async def use_llm_free(base_url: str):
         print(f"Crawler finished. Processing {len(results)} scraped page(s) with Gemini...")
 
         for res in results:
-            scraped_content = res.html
+            scraped_content = res.markdown
             current_url = res.url
 
             if scraped_content:
@@ -107,14 +106,6 @@ async def use_llm_free(base_url: str):
     print("\n--- Extraction Complete ---")
     if all_extracted_data:
         print(f"Successfully extracted data from {len(all_extracted_data)} page(s).")
-        # For better readability, print each extracted item
-        for data in all_extracted_data:
-            print(f"Page URL: {data.page_url}")
-            print(f"Page Name: {data.page_name}")
-            print(f"Products: {len(data.products)} categories")
-            print(f"Pages (internal links): {len(data.pages)}")
-            print(f"Pagination Info: {data.pagination}")
-            print("-" * 20)
 
         # Write data to JSON file
         data_dir = "data"
@@ -122,8 +113,7 @@ async def use_llm_free(base_url: str):
         file_path = os.path.join(data_dir, "extracted_data.json")
         try:
             with open(file_path, "w", encoding="utf-8") as f:
-                # Convert Pydantic models to dicts for json.dump
-                data_to_write = [item.model_dump() if isinstance(item, BaseModel) else item for item in all_extracted_data]
+                data_to_write = [item for item in all_extracted_data]
                 json.dump(data_to_write, f, indent=4)
             print(f"Successfully wrote extracted data to {file_path}")
         except IOError as e:
