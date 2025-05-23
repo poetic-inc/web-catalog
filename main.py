@@ -1,18 +1,13 @@
 import asyncio
-from crawl4ai import (
-    AsyncWebCrawler,
-    CrawlerRunConfig,
-    CacheMode,
-)
-from crawl4ai.extraction_strategy import LLMExtractionStrategy # Unused, but keeping for now as it might be used later
 import json
 import os
+from typing import List
+
 from google import genai, types
 from pydantic import BaseModel
-from typing import List
-from crawl4ai.deep_crawling import BFSDeepCrawlStrategy, DeepCrawlStrategy # DeepCrawlStrategy unused, but keeping for now
-from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer # Unused, but keeping for now
-from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter # Unused, but keeping for now
+
+from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
+from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
 
 from prompt import PROMPT
 
@@ -42,19 +37,21 @@ class ResponseModel(BaseModel):
 
 
 async def use_llm_free(base_url: str):
-    try:in
+    try:
         client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     except Exception as e:
         print(f"Error initializing Gemini client or model: {e}")
         return
 
-    page_number = 1
     all_extracted_data: List[ResponseModel] = []
 
+    # Configure deep crawling to discover multiple pages, including pagination.
+    # max_depth=2 allows crawling the initial page and links found on it (e.g., pagination, product detail pages).
+    # max_pages=10 limits the total number of pages crawled to prevent excessively long runs for testing.
     crawl_strategy = BFSDeepCrawlStrategy(
-        max_depth=0,
-        max_pages=1,
-        include_external=False,
+        max_depth=2,
+        max_pages=10,
+        include_external=False,  # Stay within the same domain
     )
 
     crawl_config = CrawlerRunConfig(
@@ -64,30 +61,19 @@ async def use_llm_free(base_url: str):
     )
 
     async with AsyncWebCrawler() as crawler:
-        pagination_logic = None
+        print(f"Starting deep scrape from {base_url}")
+        # crawl4ai will now handle discovering and crawling subsequent pages, including pagination links.
+        results = await crawler.arun(base_url, config=crawl_config)
 
-        while True:
-            if page_number > 2:
-                break
+        if not results:
+            print(f"Crawler returned no results for {base_url}. No data to process.")
+            return
 
-            if pagination_logic = "ui":
-                # TODO: implement ui based logic
-            else:
-                # TODO: implement JS logic
+        print(f"Crawler finished. Processing {len(results)} scraped page(s) with Gemini...")
 
-            current_url = f"{base_url}?page={page_number}"
-
-            print(f"Starting scrape for {current_url}")
-            results = await crawler.arun(current_url, config=crawl_config)
-
-            if not results:
-                print(
-                    f"Crawler returned no results for {current_url}. Assuming end of pagination or issue."
-                )
-                break
-
-            res = results[0]
+        for res in results:
             scraped_content = res.html
+            current_url = res.url  # Get the URL of the current scraped page
 
             if scraped_content:
                 print(
@@ -104,26 +90,35 @@ async def use_llm_free(base_url: str):
                             system_instruction=PROMPT,
                         ),
                     )
-                    json_output = response.text
+                    # Parse the JSON string into the ResponseModel Pydantic object
+                    json_data = json.loads(response.text)
+                    parsed_response = ResponseModel(**json_data)
+                    # Override page_url with the actual URL from the crawler result for accuracy
+                    parsed_response.page_url = current_url
 
-                    all_extracted_data.append(json_output)
-                    page_number += 1
+                    all_extracted_data.append(parsed_response)
 
                 except Exception as e:
                     print(
                         f"Error calling Gemini API or processing response for {current_url}: {e}"
                     )
-                    break
+                    # Continue to the next page even if one fails
             else:
                 print(
-                    f"No markdown content extracted from {current_url}. Assuming end of pagination."
+                    f"No HTML content extracted from {current_url}. Skipping LLM processing for this page."
                 )
-                break
 
-    print("\n--- Pagination Complete ---")
+    print("\n--- Extraction Complete ---")
     if all_extracted_data:
-        print(f"Successfully extracted data from {page_number -1} page(s).")
-        print(all_extracted_data)
+        print(f"Successfully extracted data from {len(all_extracted_data)} page(s).")
+        # For better readability, print each extracted item
+        for data in all_extracted_data:
+            print(f"Page URL: {data.page_url}")
+            print(f"Page Name: {data.page_name}")
+            print(f"Products: {len(data.products)} categories")
+            print(f"Pages (internal links): {len(data.pages)}")
+            print(f"Pagination Info: {data.pagination}")
+            print("-" * 20)
     else:
         print("No data was extracted from any page.")
 
