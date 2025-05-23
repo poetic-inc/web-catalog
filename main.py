@@ -115,6 +115,19 @@ async def use_llm_free(base_url: str):
             print(f"Pages (internal links): {len(data.pages)}")
             print(f"Pagination Info: {data.pagination}")
             print("-" * 20)
+
+        # Write data to JSON file
+        data_dir = "data"
+        os.makedirs(data_dir, exist_ok=True)
+        file_path = os.path.join(data_dir, "extracted_data.json")
+        try:
+            with open(file_path, "w", encoding="utf-8") as f:
+                # Convert Pydantic models to dicts for json.dump
+                data_to_write = [item.model_dump() if isinstance(item, BaseModel) else item for item in all_extracted_data]
+                json.dump(data_to_write, f, indent=4)
+            print(f"Successfully wrote extracted data to {file_path}")
+        except IOError as e:
+            print(f"Error writing data to {file_path}: {e}")
     else:
         print("No data was extracted from any page.")
 
