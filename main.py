@@ -8,7 +8,7 @@ from google.genai import types
 from pydantic import BaseModel
 
 from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
-from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
+from crawl4ai.deep_crawling import BFSDeepCrawlStrategy, DFSDeepCrawlStrategy
 from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
 
 from prompt import PROMPT
@@ -50,7 +50,7 @@ async def use_llm_free(base_url: str):
     url_filter = URLPatternFilter(patterns=[f"{base_url}?page=*"])
     filter_chain = FilterChain(filters=[url_filter])
 
-    crawl_strategy = BFSDeepCrawlStrategy(
+    crawl_strategy = DFSDeepCrawlStrategy(
         max_depth=2,  # Adjust max_depth as needed for the number of pages
         max_pages=10, # Adjust max_pages as needed
         include_external=False,
