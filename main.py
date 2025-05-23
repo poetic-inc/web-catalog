@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 from typing import List
 
 from google import genai
@@ -46,7 +47,9 @@ async def use_llm_free(base_url: str):
 
     all_extracted_data: List[ResponseModel] = []
 
-    url_filter = URLPatternFilter(patterns=[f"{base_url}?page=*"])
+    # Ensure the base_url is escaped for regex and the pattern correctly matches '?page=' followed by anything
+    url_pattern = rf"{re.escape(base_url)}\?page=.*"
+    url_filter = URLPatternFilter(patterns=[url_pattern])
     filter_chain = FilterChain(filters=[url_filter])
 
     crawl_strategy = DFSDeepCrawlStrategy(
