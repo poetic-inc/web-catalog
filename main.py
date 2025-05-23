@@ -25,7 +25,7 @@ class Item(BaseModel):
     url: str
 
 
-class Product(Baseodel):
+class Product(BaseModel):
     category: str
     items: List[Item]
 
@@ -103,10 +103,10 @@ async def use_llm_free(base_url: str):
                         ),
                     )
                     json_output = response.text
-                    
+
                     # Directly validate and instantiate the Pydantic model from the JSON string
                     parsed_data = ResponseModel.model_validate_json(json_output)
-                    
+
                     if not parsed_data.products and not parsed_data.pages: # Check if any meaningful data was extracted
                         print(
                             f"LLM returned no meaningful data for {current_url}. Assuming end of pagination."
