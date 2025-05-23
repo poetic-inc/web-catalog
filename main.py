@@ -1,10 +1,8 @@
 import asyncio
 from crawl4ai import (
     AsyncWebCrawler,
-    BrowserConfig, # Unused, but keeping for now as it might be used later
     CrawlerRunConfig,
     CacheMode,
-    LLMConfig, # Unused, but keeping for now as it might be used later
 )
 from crawl4ai.extraction_strategy import LLMExtractionStrategy # Unused, but keeping for now as it might be used later
 import json
@@ -16,7 +14,7 @@ from crawl4ai.deep_crawling import BFSDeepCrawlStrategy, DeepCrawlStrategy # Dee
 from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer # Unused, but keeping for now
 from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter # Unused, but keeping for now
 
-from prompt import PROMPT # Changed from relative import to direct import
+from prompt import PROMPT
 
 
 class Item(BaseModel):
@@ -25,7 +23,7 @@ class Item(BaseModel):
     url: str
 
 
-class Product(BaseModel): # Corrected 'Baseodel' to 'BaseModel'
+class Product(BaseModel):
     category: str
     items: List[Item]
 
@@ -40,10 +38,11 @@ class ResponseModel(BaseModel):
     page_name: str
     products: List[Product]
     pages: List[Page]
+    pagination: str
 
 
 async def use_llm_free(base_url: str):
-    try:
+    try:in
         client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     except Exception as e:
         print(f"Error initializing Gemini client or model: {e}")
@@ -65,11 +64,16 @@ async def use_llm_free(base_url: str):
     )
 
     async with AsyncWebCrawler() as crawler:
+        pagination_logic = None
+
         while True:
-            # Hardcoded limit for demonstration purposes.
-            # Consider making this configurable or dynamic based on actual pagination.
             if page_number > 2:
                 break
+
+            if pagination_logic = "ui":
+                # TODO: implement ui based logic
+            else:
+                # TODO: implement JS logic
 
             current_url = f"{base_url}?page={page_number}"
 
@@ -82,16 +86,14 @@ async def use_llm_free(base_url: str):
                 )
                 break
 
-            # We expect one result because max_pages=1
             res = results[0]
-            scraped_content = res.markdown
+            scraped_content = res.html
 
             if scraped_content:
                 print(
                     f"Scraped content successfully from {current_url}. Sending to Gemini for formatting..."
                 )
                 try:
-                    # Using a preview model. Consider switching to a stable version for production.
                     response = await client.aio.models.generate_content(
                         model="gemini-2.5-flash-preview-05-20",
                         contents=f"Here is the input markdown: {scraped_content}",
@@ -104,16 +106,7 @@ async def use_llm_free(base_url: str):
                     )
                     json_output = response.text
 
-                    # Directly validate and instantiate the Pydantic model from the JSON string
-                    parsed_data = ResponseModel.model_validate_json(json_output)
-
-                    if not parsed_data.products and not parsed_data.pages: # Check if any meaningful data was extracted
-                        print(
-                            f"LLM returned no meaningful data for {current_url}. Assuming end of pagination."
-                        )
-                        break
-
-                    all_extracted_data.append(parsed_data)
+                    all_extracted_data.append(json_output)
                     page_number += 1
 
                 except Exception as e:
@@ -123,15 +116,13 @@ async def use_llm_free(base_url: str):
                     break
             else:
                 print(
-                    f"No markdown content extracted from {current_url} by Crawl4AI. Assuming end of pagination."
+                    f"No markdown content extracted from {current_url}. Assuming end of pagination."
                 )
                 break
 
     print("\n--- Pagination Complete ---")
     if all_extracted_data:
         print(f"Successfully extracted data from {page_number -1} page(s).")
-        # For large outputs, consider pretty-printing or saving to a file
-        # print(json.dumps([item.model_dump() for item in all_extracted_data], indent=2))
         print(all_extracted_data)
     else:
         print("No data was extracted from any page.")
@@ -145,4 +136,3 @@ async def simple_crawl(url: str):
 
 if __name__ == "__main__":
     asyncio.run(use_llm_free(base_url="https://bronsonshop.com/collections/clothing"))
-    # asyncio.run(simple_crawl(url="https://bronsonshop.com/collections/clothing?page=1"))
