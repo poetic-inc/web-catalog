@@ -1,22 +1,22 @@
 import asyncio
 from crawl4ai import (
     AsyncWebCrawler,
-    BrowserConfig,
+    BrowserConfig, # Unused, but keeping for now as it might be used later
     CrawlerRunConfig,
     CacheMode,
-    LLMConfig,
+    LLMConfig, # Unused, but keeping for now as it might be used later
 )
-from crawl4ai.extraction_strategy import LLMExtractionStrategy
+from crawl4ai.extraction_strategy import LLMExtractionStrategy # Unused, but keeping for now as it might be used later
 import json
 import os
 from google import genai, types
 from pydantic import BaseModel
 from typing import List
-from crawl4ai.deep_crawling import BFSDeepCrawlStrategy, DeepCrawlStrategy
-from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
-from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
+from crawl4ai.deep_crawling import BFSDeepCrawlStrategy, DeepCrawlStrategy # DeepCrawlStrategy unused, but keeping for now
+from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer # Unused, but keeping for now
+from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter # Unused, but keeping for now
 
-from .prompt import PROMPT
+from prompt import PROMPT # Changed from relative import to direct import
 
 
 class Item(BaseModel):
@@ -25,7 +25,7 @@ class Item(BaseModel):
     url: str
 
 
-class Product(BaseModel):
+class Product(Baseodel):
     category: str
     items: List[Item]
 
@@ -66,6 +66,8 @@ async def use_llm_free(base_url: str):
 
     async with AsyncWebCrawler() as crawler:
         while True:
+            # Hardcoded limit for demonstration purposes.
+            # Consider making this configurable or dynamic based on actual pagination.
             if page_number > 2:
                 break
 
@@ -89,6 +91,7 @@ async def use_llm_free(base_url: str):
                     f"Scraped content successfully from {current_url}. Sending to Gemini for formatting..."
                 )
                 try:
+                    # Using a preview model. Consider switching to a stable version for production.
                     response = await client.aio.models.generate_content(
                         model="gemini-2.5-flash-preview-05-20",
                         contents=f"Here is the input markdown: {scraped_content}",
@@ -100,14 +103,17 @@ async def use_llm_free(base_url: str):
                         ),
                     )
                     json_output = response.text
-                    parsed_json_list = json.loads(json_output)
-                    if not parsed_json_list:
+                    
+                    # Directly validate and instantiate the Pydantic model from the JSON string
+                    parsed_data = ResponseModel.model_validate_json(json_output)
+                    
+                    if not parsed_data.products and not parsed_data.pages: # Check if any meaningful data was extracted
                         print(
-                            f"LLM returned no data for {current_url}. Assuming end of pagination."
+                            f"LLM returned no meaningful data for {current_url}. Assuming end of pagination."
                         )
                         break
 
-                    all_extracted_data.append(parsed_json_list)
+                    all_extracted_data.append(parsed_data)
                     page_number += 1
 
                 except Exception as e:
@@ -124,6 +130,8 @@ async def use_llm_free(base_url: str):
     print("\n--- Pagination Complete ---")
     if all_extracted_data:
         print(f"Successfully extracted data from {page_number -1} page(s).")
+        # For large outputs, consider pretty-printing or saving to a file
+        # print(json.dumps([item.model_dump() for item in all_extracted_data], indent=2))
         print(all_extracted_data)
     else:
         print("No data was extracted from any page.")
