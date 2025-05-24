@@ -40,6 +40,7 @@ class ResponseModel(BaseModel):
     page_url: str
     page_name: str
     products: List[Product]
+    # pagination: str
 
 
 class UniqueURLFilter(URLFilter):
@@ -48,11 +49,13 @@ class UniqueURLFilter(URLFilter):
         self.seen_urls = set()
 
     def apply(self, url: str) -> bool:
-        if url in self.seen_urls:
+        # Normalize the URL by removing trailing slashes
+        normalized_url = url.rstrip('/')
+        if normalized_url in self.seen_urls:
             self._update_stats(False)
             return False
         else:
-            self.seen_urls.add(url)
+            self.seen_urls.add(normalized_url)
             self._update_stats(True)
             return True
 
@@ -66,15 +69,16 @@ async def use_llm_free(base_url: str):
 
     all_extracted_data: List[ResponseModel] = []
 
-    url_pattern = r".*\?page=\d+"
+    # Re-enable url_pattern and filter_chain
+    url_pattern = r".*\?page=\d+"  # Match any URL containing '?page=' followed by digits, ensuring it's treated as regex
     url_filter = URLPatternFilter(patterns=[url_pattern])
-    filter_chain = FilterChain(filters=[UniqueURLFilter(), url_filter])
+    filter_chain = FilterChain(filters=[UniqueURLFilter(), url_filter]) # Re-added UniqueURLFilter
 
-    crawl_strategy = BFSDeepCrawlStrategy(
+    crawl_strategy = DFSDeepCrawlStrategy( # Changed to DFSDeepCrawlStrategy
         max_depth=15,
         max_pages=15,
         include_external=False,
-        filter_chain=filter_chain,
+        filter_chain=filter_chain,  # Filter chain re-enabled
     )
 
     crawl_config = CrawlerRunConfig(
@@ -88,6 +92,7 @@ async def use_llm_free(base_url: str):
     async with AsyncWebCrawler(config=browser_config) as crawler:
         print(f"Starting deep scrape from {base_url}")
         results = await crawler.arun(base_url, config=crawl_config)
+        print(results)
 
         if not results:
             print(f"Crawler returned no results for {base_url}. No data to process.")
@@ -99,7 +104,9 @@ async def use_llm_free(base_url: str):
 
         for res in results:
             scraped_content = res.markdown
+            print(scraped_content)
             current_url = res.url
+            # print(res.links) # Keep this commented out unless you need to see the links again
 
             if scraped_content:
                 print(
