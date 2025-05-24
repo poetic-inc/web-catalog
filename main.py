@@ -46,15 +46,16 @@ async def use_llm_free(base_url: str):
 
     all_extracted_data: List[ResponseModel] = []
 
-    # url_pattern = r".*"  # Temporarily allow all internal links for testing
-    # url_filter = URLPatternFilter(patterns=[url_pattern])
-    # filter_chain = FilterChain(filters=[url_filter])  # Commented out for testing
+    # Re-enable url_pattern and filter_chain
+    url_pattern = r".*\?page=\d+"  # Match any URL containing '?page=' followed by digits, ensuring it's treated as regex
+    url_filter = URLPatternFilter(patterns=[url_pattern])
+    filter_chain = FilterChain(filters=[url_filter])
 
     crawl_strategy = DFSDeepCrawlStrategy(
         max_depth=15,
         max_pages=15,
         include_external=False,
-        # filter_chain=filter_chain, # Removed for testing
+        filter_chain=filter_chain,  # Re-enable filter_chain
     )
 
     crawl_config = CrawlerRunConfig(
@@ -67,7 +68,6 @@ async def use_llm_free(base_url: str):
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
         print(f"Starting deep scrape from {base_url}")
-        # Revert: Pass base_url as a string, not a list, to avoid TypeError
         results = await crawler.arun(base_url, config=crawl_config)
         print(results)
 
