@@ -67,7 +67,8 @@ async def use_llm_free(base_url: str):
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
         print(f"Starting deep scrape from {base_url}")
-        results = await crawler.arun(base_url, config=crawl_config)
+        # Pass base_url as a list to ensure deep crawl strategy is engaged
+        results = await crawler.arun([base_url], config=crawl_config)
 
         if not results:
             print(f"Crawler returned no results for {base_url}. No data to process.")
