@@ -48,7 +48,7 @@ async def use_llm_free(base_url: str):
 
     # url_pattern = r".*"  # Temporarily allow all internal links for testing
     # url_filter = URLPatternFilter(patterns=[url_pattern])
-    # filter_chain = FilterChain(filters=[url_filter]) # Commented out for testing
+    # filter_chain = FilterChain(filters=[url_filter])  # Commented out for testing
 
     crawl_strategy = DFSDeepCrawlStrategy(
         max_depth=15,
@@ -69,6 +69,7 @@ async def use_llm_free(base_url: str):
         print(f"Starting deep scrape from {base_url}")
         # Revert: Pass base_url as a string, not a list, to avoid TypeError
         results = await crawler.arun(base_url, config=crawl_config)
+        print(results)
 
         if not results:
             print(f"Crawler returned no results for {base_url}. No data to process.")
@@ -80,6 +81,7 @@ async def use_llm_free(base_url: str):
 
         for res in results:
             scraped_content = res.markdown
+            print(scraped_content)
             current_url = res.url
             # print(res.links) # Keep this commented out unless you need to see the links again
 
