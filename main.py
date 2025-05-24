@@ -47,8 +47,8 @@ async def use_llm_free(base_url: str):
 
     all_extracted_data: List[ResponseModel] = []
 
-    # Match any URL that contains '?page='
-    url_pattern = r".*\?page=.*"
+    # Match any URL starting with http/https and containing '?page=', ensuring it's treated as regex
+    url_pattern = r"^https?://[^\s]*\?page=.*"
     url_filter = URLPatternFilter(patterns=[url_pattern])
     filter_chain = FilterChain(filters=[url_filter])
 
