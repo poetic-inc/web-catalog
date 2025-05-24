@@ -78,7 +78,7 @@ async def use_llm_free(base_url: str):
         for res in results:
             scraped_content = res.markdown
             current_url = res.url
-            print(res.links)
+            # print(res.links)
 
             if scraped_content:
                 print(
