@@ -4,7 +4,13 @@ import os
 import re
 from typing import List
 
-from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
+from crawl4ai import (
+    AsyncWebCrawler,
+    BrowserConfig,
+    CacheMode,
+    CrawlerRunConfig,
+    URLFilter,
+)
 from crawl4ai.deep_crawling import BFSDeepCrawlStrategy, DFSDeepCrawlStrategy
 from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
 from google import genai
@@ -34,7 +40,21 @@ class ResponseModel(BaseModel):
     page_url: str
     page_name: str
     products: List[Product]
-    # pagination: str
+
+
+class UniqueURLFilter(URLFilter):
+    def __init__(self):
+        super().__init__(name="UniqueURLFilter")
+        self.seen_urls = set()
+
+    def apply(self, url: str) -> bool:
+        if url in self.seen_urls:
+            self._update_stats(False)
+            return False
+        else:
+            self.seen_urls.add(url)
+            self._update_stats(True)
+            return True
 
 
 async def use_llm_free(base_url: str):
@@ -46,16 +66,15 @@ async def use_llm_free(base_url: str):
 
     all_extracted_data: List[ResponseModel] = []
 
-    # Re-enable url_pattern and filter_chain
-    url_pattern = r".*\?page=\d+"  # Match any URL containing '?page=' followed by digits, ensuring it's treated as regex
+    url_pattern = r".*\?page=\d+"
     url_filter = URLPatternFilter(patterns=[url_pattern])
-    filter_chain = FilterChain(filters=[url_filter])
+    filter_chain = FilterChain(filters=[UniqueURLFilter(), url_filter])
 
-    crawl_strategy = DFSDeepCrawlStrategy(
+    crawl_strategy = BFSDeepCrawlStrategy(
         max_depth=15,
         max_pages=15,
         include_external=False,
-        filter_chain=filter_chain,  # Re-enable filter_chain
+        filter_chain=filter_chain,
     )
 
     crawl_config = CrawlerRunConfig(
@@ -69,7 +88,6 @@ async def use_llm_free(base_url: str):
     async with AsyncWebCrawler(config=browser_config) as crawler:
         print(f"Starting deep scrape from {base_url}")
         results = await crawler.arun(base_url, config=crawl_config)
-        print(results)
 
         if not results:
             print(f"Crawler returned no results for {base_url}. No data to process.")
@@ -81,9 +99,7 @@ async def use_llm_free(base_url: str):
 
         for res in results:
             scraped_content = res.markdown
-            print(scraped_content)
             current_url = res.url
-            # print(res.links) # Keep this commented out unless you need to see the links again
 
             if scraped_content:
                 print(
