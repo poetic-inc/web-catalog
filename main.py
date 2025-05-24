@@ -46,15 +46,15 @@ async def use_llm_free(base_url: str):
 
     all_extracted_data: List[ResponseModel] = []
 
-    url_pattern = r".*"  # Temporarily allow all internal links for testing
-    url_filter = URLPatternFilter(patterns=[url_pattern])
-    filter_chain = FilterChain(filters=[url_filter])
+    # url_pattern = r".*"  # Temporarily allow all internal links for testing
+    # url_filter = URLPatternFilter(patterns=[url_pattern])
+    # filter_chain = FilterChain(filters=[url_filter]) # Commented out for testing
 
     crawl_strategy = DFSDeepCrawlStrategy(
         max_depth=15,
         max_pages=15,
         include_external=False,
-        filter_chain=filter_chain,
+        # filter_chain=filter_chain, # Removed for testing
     )
 
     crawl_config = CrawlerRunConfig(
@@ -80,7 +80,7 @@ async def use_llm_free(base_url: str):
         for res in results:
             scraped_content = res.markdown
             current_url = res.url
-            # print(res.links)
+            # print(res.links) # Keep this commented out unless you need to see the links again
 
             if scraped_content:
                 print(
