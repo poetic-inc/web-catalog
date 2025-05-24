@@ -4,13 +4,12 @@ import os
 import re
 from typing import List
 
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
+from crawl4ai.deep_crawling import BFSDeepCrawlStrategy, DFSDeepCrawlStrategy
+from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
-
-from crawl4ai import AsyncWebCrawler, CacheMode, CrawlerRunConfig
-from crawl4ai.deep_crawling import BFSDeepCrawlStrategy, DFSDeepCrawlStrategy
-from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
 
 from prompt import PROMPT
 
@@ -47,14 +46,13 @@ async def use_llm_free(base_url: str):
 
     all_extracted_data: List[ResponseModel] = []
 
-    # Match any URL containing '?page=' followed by digits, ensuring it's treated as regex
     url_pattern = r".*\?page=\d+"
     url_filter = URLPatternFilter(patterns=[url_pattern])
     filter_chain = FilterChain(filters=[url_filter])
 
     crawl_strategy = DFSDeepCrawlStrategy(
-        max_depth=15,  # Adjust max_depth as needed for the number of pages
-        max_pages=15, # Adjust max_pages as needed
+        max_depth=15,
+        max_pages=15,
         include_external=False,
         filter_chain=filter_chain,
     )
@@ -65,7 +63,9 @@ async def use_llm_free(base_url: str):
         verbose=True,
     )
 
-    async with AsyncWebCrawler() as crawler:
+    browser_config = BrowserConfig(headless=True, verbose=True)
+
+    async with AsyncWebCrawler(config=browser_config) as crawler:
         print(f"Starting deep scrape from {base_url}")
         results = await crawler.arun(base_url, config=crawl_config)
 
@@ -73,12 +73,14 @@ async def use_llm_free(base_url: str):
             print(f"Crawler returned no results for {base_url}. No data to process.")
             return
 
-        print(f"Crawler finished. Processing {len(results)} scraped page(s) with Gemini...")
+        print(
+            f"Crawler finished. Processing {len(results)} scraped page(s) with Gemini..."
+        )
 
         for res in results:
             scraped_content = res.markdown
             current_url = res.url
-            # print(res.links)
+            print(res.links)
 
             if scraped_content:
                 print(
