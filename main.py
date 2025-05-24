@@ -46,7 +46,7 @@ async def use_llm_free(base_url: str):
 
     all_extracted_data: List[ResponseModel] = []
 
-    url_pattern = r".*\?page=\d+"
+    url_pattern = r".*" # Temporarily allow all internal links for testing
     url_filter = URLPatternFilter(patterns=[url_pattern])
     filter_chain = FilterChain(filters=[url_filter])
 
