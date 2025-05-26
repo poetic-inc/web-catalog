@@ -60,13 +60,23 @@ class UniqueURLFilter(URLFilter):
         scheme = parsed_url.scheme.lower()
         netloc = parsed_url.netloc.lower()
 
+        # Remove 'www.' prefix from netloc if present
+        if netloc.startswith("www."):
+            netloc = netloc[4:]
+
+        # Remove default ports from netloc
+        if (scheme == "http" and netloc.endswith(":80")) or \
+           (scheme == "https" and netloc.endswith(":443")):
+            netloc = netloc.rsplit(':', 1)[0] # Remove the last colon and port number
+
         # Remove fragment identifiers (e.g., #section) as they don't change the resource
         fragment = ""
 
         # Normalize path:
+        # - Lowercase the path
         # - If the path is just '/', treat it as empty (e.g., example.com/ is same as example.com)
         # - Otherwise, remove trailing slashes
-        normalized_path = parsed_url.path
+        normalized_path = parsed_url.path.lower() # Lowercase path
         if normalized_path == "/":
             normalized_path = ""
         elif normalized_path.endswith("/"):
@@ -77,6 +87,7 @@ class UniqueURLFilter(URLFilter):
         query_params = parse_qs(parsed_url.query)
         sorted_query_items = []
         for key in sorted(query_params.keys()):
+            # Ensure values for each key are also sorted
             for value in sorted(query_params[key]):
                 sorted_query_items.append((key, value))
         query = urlencode(sorted_query_items, doseq=True)
