@@ -11,7 +11,7 @@ from crawl4ai import (
     CrawlerRunConfig,
     URLFilter,
 )
-from crawl4ai.deep_crawling import BFSDeepCrawlStrategy, DFSDeepCrawlStrategy
+from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
 from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
 from google import genai
 from google.genai import types
@@ -49,8 +49,8 @@ class UniqueURLFilter(URLFilter):
         self.seen_urls = set()
 
     def apply(self, url: str) -> bool:
-        # Normalize the URL by removing trailing slashes
-        normalized_url = url.rstrip('/')
+        # TODO: apply more robust method for filtering duplicate url
+        normalized_url = url.rstrip("/")
         if normalized_url in self.seen_urls:
             self._update_stats(False)
             return False
@@ -69,16 +69,15 @@ async def use_llm_free(base_url: str):
 
     all_extracted_data: List[ResponseModel] = []
 
-    # Re-enable url_pattern and filter_chain
-    url_pattern = r".*\?page=\d+"  # Match any URL containing '?page=' followed by digits, ensuring it's treated as regex
+    url_pattern = r".*\?page=\d+"
     url_filter = URLPatternFilter(patterns=[url_pattern])
-    filter_chain = FilterChain(filters=[UniqueURLFilter(), url_filter]) # Re-added UniqueURLFilter
+    filter_chain = FilterChain(filters=[UniqueURLFilter(), url_filter])
 
-    crawl_strategy = DFSDeepCrawlStrategy( # Changed to DFSDeepCrawlStrategy
+    crawl_strategy = BFSDeepCrawlStrategy(
         max_depth=15,
         max_pages=15,
         include_external=False,
-        filter_chain=filter_chain,  # Filter chain re-enabled
+        filter_chain=filter_chain,
     )
 
     crawl_config = CrawlerRunConfig(
@@ -87,7 +86,7 @@ async def use_llm_free(base_url: str):
         verbose=True,
     )
 
-    browser_config = BrowserConfig(headless=True, verbose=True)
+    browser_config = BrowserConfig(headless=True)
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
         print(f"Starting deep scrape from {base_url}")
@@ -104,7 +103,6 @@ async def use_llm_free(base_url: str):
 
         for res in results:
             scraped_content = res.markdown
-            print(scraped_content)
             current_url = res.url
             # print(res.links) # Keep this commented out unless you need to see the links again
 
