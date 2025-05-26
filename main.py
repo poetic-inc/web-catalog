@@ -225,20 +225,27 @@ async def run_agent(user_instruction: str):
     You are an intelligent web scraping agent. Your goal is to understand user instructions and generate a plan to scrape and extract relevant data.
 
     Based on the following user instruction, generate a JSON plan.
-    The plan must include:
-    - "action": "crawl_and_extract" (this is the only supported action for now)
-    - "start_url": The initial URL to start crawling from.
-    - "page_patterns": A list of regex patterns for URLs that should be scraped. Use `.*` for any character. For example, if the user wants product pages, you might use `["https://example.com/products/.*"]`. If they want paginated category pages, `["https://example.com/category.*page=\\d+"]`.
-    - "extraction_prompt": The system instruction for the data extraction LLM. This prompt should guide the LLM on what data to extract and how to format it, based on the user's request.
-    - "extraction_schema_name": The name of the Pydantic model to use for structured extraction (e.g., "ResponseModel").
-    - "max_pages": The maximum number of pages to crawl.
-    - "max_depth": The maximum crawl depth.
+    The JSON plan must strictly adhere to the following structure:
+    - "action": (string) Must be "crawl_and_extract". This is the only supported action for now.
+    - "start_url": (string) The initial URL to start crawling from.
+    - "page_patterns": (list of strings) A list of regex patterns for URLs that should be scraped. Use `.*` for any character. For example, if the user wants product pages, you might use `["https://example.com/products/.*"]`. If they want paginated category pages, `["https://example.com/category.*page=\\d+"]`.
+    - "extraction_prompt": (string) The system instruction for the data extraction LLM. This prompt should guide the LLM on what data to extract and how to format it, based on the user's request.
+    - "extraction_schema_name": (string) The name of the Pydantic model to use for structured extraction (e.g., "ResponseModel").
+    - "max_pages": (integer) The maximum number of pages to crawl.
+    - "max_depth": (integer) The maximum crawl depth.
 
-    Available Pydantic schemas for extraction:
-    - ResponseModel:
-        page_url: str
-        page_name: str
-        products: List[Product] (Product has category: str, items: List[Item]) (Item has name: str, price: str, url: str)
+    The available Pydantic schemas for the "extraction_schema_name" field are:
+    - "ResponseModel": This schema expects the following structure:
+        - page_url (string): The URL of the page.
+        - page_name (string): The name or title of the page.
+        - products (list of Product objects): A list of product details found on the page.
+            - Each Product object has:
+                - category (string): The category of the product.
+                - items (list of Item objects): A list of individual items within that product category.
+                    - Each Item object has:
+                        - name (string): The name of the item.
+                        - price (string): The price of the item.
+                        - url (string): The URL of the item.
 
     User Instruction: "{user_instruction}"
 
@@ -264,7 +271,7 @@ async def run_agent(user_instruction: str):
             contents=agent_prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=AgentPlan,  # Guide the agent to output the plan in this schema
+                # response_schema=AgentPlan,  # Removed as per request
                 temperature=0.0,
             ),
         )
