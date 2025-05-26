@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 import re
-from typing import List, Type # Import Type for type hints
+from typing import List, Type  # Import Type for type hints
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from crawl4ai import (
@@ -121,7 +121,7 @@ async def crawl_and_extract_data(
     start_url: str,
     page_patterns: List[str],
     extraction_prompt: str,
-    extraction_schema: Type[BaseModel], # Use Type for class hint
+    extraction_schema: Type[BaseModel],  # Use Type for class hint
     max_pages: int = 15,
     max_depth: int = 15,
 ) -> List[dict]:
@@ -131,7 +131,7 @@ async def crawl_and_extract_data(
         print(f"Error initializing Gemini client or model: {e}")
         return []
 
-    all_extracted_data: List[dict] = [] # Changed to dict as json.loads returns dict
+    all_extracted_data: List[dict] = []  # Changed to dict as json.loads returns dict
 
     # Dynamically create URLPatternFilters based on agent's plan
     url_pattern_filters = [URLPatternFilter(patterns=[p]) for p in page_patterns]
@@ -178,9 +178,9 @@ async def crawl_and_extract_data(
                         contents=f"Here is the input markdown: {scraped_content}",
                         config=types.GenerateContentConfig(
                             response_mime_type="application/json",
-                            response_schema=extraction_schema, # Use the dynamic schema
+                            response_schema=extraction_schema,  # Use the dynamic schema
                             temperature=0.0,
-                            system_instruction=extraction_prompt, # Use the dynamic prompt
+                            system_instruction=extraction_prompt,  # Use the dynamic prompt
                         ),
                     )
                     json_data = json.loads(response.text)
@@ -274,7 +274,9 @@ async def run_agent(user_instruction: str):
         if plan.action == "crawl_and_extract":
             extraction_schema_class = schema_map.get(plan.extraction_schema_name)
             if not extraction_schema_class:
-                print(f"Error: Unknown extraction schema name: {plan.extraction_schema_name}")
+                print(
+                    f"Error: Unknown extraction schema name: {plan.extraction_schema_name}"
+                )
                 return
 
             print(f"Agent decided to execute plan: {plan.model_dump_json(indent=2)}")
@@ -288,7 +290,9 @@ async def run_agent(user_instruction: str):
             )
             print("\n--- Agent Workflow Complete ---")
             if extracted_data:
-                print(f"Agent successfully extracted data from {len(extracted_data)} page(s).")
+                print(
+                    f"Agent successfully extracted data from {len(extracted_data)} page(s)."
+                )
 
                 # Write data to JSON file
                 data_dir = "data"
@@ -307,7 +311,9 @@ async def run_agent(user_instruction: str):
 
     except Exception as e:
         print(f"Error in agent orchestration: {e}")
-        print(f"Agent response text (if available): {getattr(agent_response, 'text', 'N/A')}")
+        print(
+            f"Agent response text (if available): {getattr(agent_response, 'text', 'N/A')}"
+        )
 
 
 async def simple_crawl(base_url: str):
@@ -318,5 +324,9 @@ async def simple_crawl(base_url: str):
 
 if __name__ == "__main__":
     # Example usage of the agent
-    asyncio.run(run_agent(user_instruction="Find all clothing items and their prices from bronsonshop.com/collections/clothing"))
+    asyncio.run(
+        run_agent(
+            user_instruction="Find all clothing items and their prices from bronsonshop.com/collections/clothing"
+        )
+    )
     # asyncio.run(simple_crawl(base_url="https://bronsonshop.com/collections/clothing"))
