@@ -9,7 +9,14 @@ from crawl4ai.deep_crawling import (
     DFSDeepCrawlStrategy,
     BestFirstCrawlingStrategy,
 )
-from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
+from crawl4ai.deep_crawling.filters import (
+    FilterChain,
+    URLPatternFilter,
+    DomainFilter,
+    ContentTypeFilter,
+    ContentRelevanceFilter,
+    SEOFilter,
+)
 from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
 from google import genai
 from google.genai import types
@@ -66,12 +73,45 @@ async def _internal_crawl_pages(
     max_pages: int = 15,
     max_depth: int = 15,
     keywords: List[str] = None,
+    # New filter parameters
+    domain_filter_allowed: List[str] = None,
+    domain_filter_blocked: List[str] = None,
+    content_type_filter_allowed: List[str] = None,
+    content_relevance_filter_query: str = None,
+    content_relevance_filter_threshold: float = 0.7,
+    seo_filter_keywords: List[str] = None,
+    seo_filter_threshold: float = 0.5,
 ):
     """
-    Internal helper to perform web crawling with a specified strategy.
+    Internal helper to perform web crawling with a specified strategy and filters.
     """
-    url_pattern_filters = [URLPatternFilter(patterns=[p]) for p in page_patterns]
-    filter_chain = FilterChain(filters=[UniqueURLFilter(), *url_pattern_filters])
+    active_filters = [UniqueURLFilter()]
+    active_filters.extend([URLPatternFilter(patterns=[p]) for p in page_patterns])
+
+    if domain_filter_allowed or domain_filter_blocked:
+        active_filters.append(
+            DomainFilter(
+                allowed_domains=domain_filter_allowed,
+                blocked_domains=domain_filter_blocked,
+            )
+        )
+    if content_type_filter_allowed:
+        active_filters.append(
+            ContentTypeFilter(allowed_types=content_type_filter_allowed)
+        )
+    if content_relevance_filter_query:
+        active_filters.append(
+            ContentRelevanceFilter(
+                query=content_relevance_filter_query,
+                threshold=content_relevance_filter_threshold,
+            )
+        )
+    if seo_filter_keywords:
+        active_filters.append(
+            SEOFilter(keywords=seo_filter_keywords, threshold=seo_filter_threshold)
+        )
+
+    filter_chain = FilterChain(filters=active_filters)
 
     if strategy_type == "BFS":
         crawl_strategy = BFSDeepCrawlStrategy(
@@ -135,13 +175,32 @@ async def perform_bfs_extraction_workflow(
     page_patterns: List[str],
     max_pages: int = 15,
     max_depth: int = 15,
+    domain_filter_allowed: List[str] = None,
+    domain_filter_blocked: List[str] = None,
+    content_type_filter_allowed: List[str] = None,
+    content_relevance_filter_query: str = None,
+    content_relevance_filter_threshold: float = 0.7,
+    seo_filter_keywords: List[str] = None,
+    seo_filter_threshold: float = 0.5,
 ) -> List[dict]:
     """
     Performs BFS crawling and extracts data using ProductModel.
+    Supports various optional filters.
     """
     all_extracted_data: List[dict] = []
     scraped_pages = await _internal_crawl_pages(
-        start_url, page_patterns, "BFS", max_pages, max_depth
+        start_url=start_url,
+        page_patterns=page_patterns,
+        strategy_type="BFS",
+        max_pages=max_pages,
+        max_depth=max_depth,
+        domain_filter_allowed=domain_filter_allowed,
+        domain_filter_blocked=domain_filter_blocked,
+        content_type_filter_allowed=content_type_filter_allowed,
+        content_relevance_filter_query=content_relevance_filter_query,
+        content_relevance_filter_threshold=content_relevance_filter_threshold,
+        seo_filter_keywords=seo_filter_keywords,
+        seo_filter_threshold=seo_filter_threshold,
     )
 
     if not scraped_pages:
@@ -163,13 +222,32 @@ async def perform_dfs_extraction_workflow(
     page_patterns: List[str],
     max_pages: int = 15,
     max_depth: int = 15,
+    domain_filter_allowed: List[str] = None,
+    domain_filter_blocked: List[str] = None,
+    content_type_filter_allowed: List[str] = None,
+    content_relevance_filter_query: str = None,
+    content_relevance_filter_threshold: float = 0.7,
+    seo_filter_keywords: List[str] = None,
+    seo_filter_threshold: float = 0.5,
 ) -> List[dict]:
     """
     Performs DFS crawling and extracts data using ProductModel.
+    Supports various optional filters.
     """
     all_extracted_data: List[dict] = []
     scraped_pages = await _internal_crawl_pages(
-        start_url, page_patterns, "DFS", max_pages, max_depth
+        start_url=start_url,
+        page_patterns=page_patterns,
+        strategy_type="DFS",
+        max_pages=max_pages,
+        max_depth=max_depth,
+        domain_filter_allowed=domain_filter_allowed,
+        domain_filter_blocked=domain_filter_blocked,
+        content_type_filter_allowed=content_type_filter_allowed,
+        content_relevance_filter_query=content_relevance_filter_query,
+        content_relevance_filter_threshold=content_relevance_filter_threshold,
+        seo_filter_keywords=seo_filter_keywords,
+        seo_filter_threshold=seo_filter_threshold,
     )
 
     if not scraped_pages:
@@ -192,18 +270,33 @@ async def perform_best_first_extraction_workflow(
     keywords: List[str],
     max_pages: int = 15,
     max_depth: int = 15,
+    domain_filter_allowed: List[str] = None,
+    domain_filter_blocked: List[str] = None,
+    content_type_filter_allowed: List[str] = None,
+    content_relevance_filter_query: str = None,
+    content_relevance_filter_threshold: float = 0.7,
+    seo_filter_keywords: List[str] = None,
+    seo_filter_threshold: float = 0.5,
 ) -> List[dict]:
     """
     Performs BestFirst crawling using keywords and extracts data using ProductModel.
+    Supports various optional filters.
     """
     all_extracted_data: List[dict] = []
     scraped_pages = await _internal_crawl_pages(
-        start_url,
-        page_patterns,
-        "BestFirst",
-        max_pages,
-        max_depth,
+        start_url=start_url,
+        page_patterns=page_patterns,
+        strategy_type="BestFirst",
+        max_pages=max_pages,
+        max_depth=max_depth,
         keywords=keywords,
+        domain_filter_allowed=domain_filter_allowed,
+        domain_filter_blocked=domain_filter_blocked,
+        content_type_filter_allowed=content_type_filter_allowed,
+        content_relevance_filter_query=content_relevance_filter_query,
+        content_relevance_filter_threshold=content_relevance_filter_threshold,
+        seo_filter_keywords=seo_filter_keywords,
+        seo_filter_threshold=seo_filter_threshold,
     )
 
     if not scraped_pages:
