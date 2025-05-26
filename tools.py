@@ -3,8 +3,14 @@ import os
 from typing import List, Type
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
-from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
+from crawl4ai.content_scraping_strategy import LXMLWebScrapingStrategy
+from crawl4ai.deep_crawling import (
+    BFSDeepCrawlStrategy,
+    DFSDeepCrawlStrategy,
+    BestFirstCrawlingStrategy,
+)
 from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
+from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
@@ -53,44 +59,67 @@ async def _format_data_md(
         return None
 
 
-async def _crawl_pages(
+async def _internal_crawl_pages(
     start_url: str,
     page_patterns: List[str],
+    strategy_type: str,
     max_pages: int = 15,
     max_depth: int = 15,
+    keywords: List[str] = None,
 ):
     """
-    Performs web crawling and returns raw scraped page results.
-
-    Args:
-        start_url: The initial URL to start crawling from.
-        page_patterns: A list of regex patterns for URLs that should be scraped.
-        max_pages: The maximum number of pages to crawl.
-        max_depth: The maximum crawl depth.
-
-    Returns:
-        A list of ScrapedPage objects from crawl4ai.
+    Internal helper to perform web crawling with a specified strategy.
     """
     url_pattern_filters = [URLPatternFilter(patterns=[p]) for p in page_patterns]
     filter_chain = FilterChain(filters=[UniqueURLFilter(), *url_pattern_filters])
 
-    crawl_strategy = BFSDeepCrawlStrategy(
-        max_depth=max_depth,
-        max_pages=max_pages,
-        include_external=False,
-        filter_chain=filter_chain,
-    )
+    if strategy_type == "BFS":
+        crawl_strategy = BFSDeepCrawlStrategy(
+            max_depth=max_depth,
+            max_pages=max_pages,
+            include_external=False,
+            filter_chain=filter_chain,
+        )
+    elif strategy_type == "DFS":
+        crawl_strategy = DFSDeepCrawlStrategy(
+            max_depth=max_depth,
+            max_pages=max_pages,
+            include_external=False,
+            filter_chain=filter_chain,
+        )
+    elif strategy_type == "BestFirst":
+        if not keywords:
+            print("Warning: BestFirstCrawlingStrategy called without keywords. Scorer will be basic.")
+            # Default to a null scorer or handle as an error if keywords are mandatory
+            # For now, let's proceed, but it might not be effective.
+            # A more robust solution might involve a default scorer or raising an error.
+            url_scorer = None 
+        else:
+            url_scorer = KeywordRelevanceScorer(keywords=keywords, weight=0.7)
+        
+        crawl_strategy = BestFirstCrawlingStrategy(
+            max_depth=max_depth,
+            max_pages=max_pages,
+            include_external=False,
+            filter_chain=filter_chain,
+            url_scorer=url_scorer,
+        )
+    else:
+        raise ValueError(f"Unsupported crawl strategy type: {strategy_type}")
 
     crawl_config = CrawlerRunConfig(
         cache_mode=CacheMode.BYPASS,
         deep_crawl_strategy=crawl_strategy,
+        scraping_strategy=LXMLWebScrapingStrategy(), # Added based on crawl4ai docs
         verbose=True,
     )
 
     browser_config = BrowserConfig(headless=True)
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
-        print(f"Starting deep scrape from {start_url} with patterns: {page_patterns}")
+        print(
+            f"Starting {strategy_type} deep scrape from {start_url} with patterns: {page_patterns}"
+        )
         results = await crawler.arun(start_url, config=crawl_config)
 
         if not results:
@@ -101,59 +130,91 @@ async def _crawl_pages(
         return results
 
 
-async def perform_full_extraction_workflow(
+async def perform_bfs_extraction_workflow(
     start_url: str,
     page_patterns: List[str],
-    extraction_schema_name: str,
     max_pages: int = 15,
     max_depth: int = 15,
 ) -> List[dict]:
     """
-    Performs a full web crawling and data extraction workflow.
-    This tool orchestrates crawling pages and then extracting structured data from them.
-
-    Args:
-        start_url: The initial URL to start crawling from.
-        page_patterns: A list of regex patterns for URLs that should be scraped.
-        extraction_schema_name: The name of the Pydantic model to use for structured extraction (e.g., "ResponseModel").
-        max_pages: The maximum number of pages to crawl.
-        max_depth: The maximum crawl depth.
-
-    Returns:
-        A list of dictionaries, where each dictionary is the extracted data from a page.
+    Performs BFS crawling and extracts data using ProductModel.
     """
-    schema_map = {
-        "ProductModel": ProductModel,
-    }
-    extraction_schema_class = schema_map.get(extraction_schema_name)
-    if not extraction_schema_class:
-        print(f"Error: Unknown extraction schema name: {extraction_schema_name}")
-        return []
-
     all_extracted_data: List[dict] = []
-
-    scraped_pages = await _crawl_pages(start_url, page_patterns, max_pages, max_depth)
+    scraped_pages = await _internal_crawl_pages(
+        start_url, page_patterns, "BFS", max_pages, max_depth
+    )
 
     if not scraped_pages:
         return []
 
-    print(
-        f"Processing {len(scraped_pages)} scraped page(s) with Gemini for extraction..."
-    )
+    print(f"Processing {len(scraped_pages)} scraped page(s) for extraction...")
     for res in scraped_pages:
-        scraped_content = res.markdown
-        current_url = res.url
-
-        if scraped_content:
-            print(f"Sending content from {current_url} to Gemini for formatting...")
+        if res.markdown:
             json_data = await _format_data_md(
-                scraped_content, EXTRACTION_PROMPT, extraction_schema_class
+                res.markdown, EXTRACTION_PROMPT, ProductModel
             )
             if json_data:
                 all_extracted_data.append(json_data)
-        else:
-            print(
-                f"No HTML content extracted from {current_url}. Skipping LLM processing."
-            )
+    return all_extracted_data
 
+
+async def perform_dfs_extraction_workflow(
+    start_url: str,
+    page_patterns: List[str],
+    max_pages: int = 15,
+    max_depth: int = 15,
+) -> List[dict]:
+    """
+    Performs DFS crawling and extracts data using ProductModel.
+    """
+    all_extracted_data: List[dict] = []
+    scraped_pages = await _internal_crawl_pages(
+        start_url, page_patterns, "DFS", max_pages, max_depth
+    )
+
+    if not scraped_pages:
+        return []
+
+    print(f"Processing {len(scraped_pages)} scraped page(s) for extraction...")
+    for res in scraped_pages:
+        if res.markdown:
+            json_data = await _format_data_md(
+                res.markdown, EXTRACTION_PROMPT, ProductModel
+            )
+            if json_data:
+                all_extracted_data.append(json_data)
+    return all_extracted_data
+
+
+async def perform_best_first_extraction_workflow(
+    start_url: str,
+    page_patterns: List[str],
+    keywords: List[str],
+    max_pages: int = 15,
+    max_depth: int = 15,
+) -> List[dict]:
+    """
+    Performs BestFirst crawling using keywords and extracts data using ProductModel.
+    """
+    all_extracted_data: List[dict] = []
+    scraped_pages = await _internal_crawl_pages(
+        start_url,
+        page_patterns,
+        "BestFirst",
+        max_pages,
+        max_depth,
+        keywords=keywords,
+    )
+
+    if not scraped_pages:
+        return []
+
+    print(f"Processing {len(scraped_pages)} scraped page(s) for extraction...")
+    for res in scraped_pages:
+        if res.markdown:
+            json_data = await _format_data_md(
+                res.markdown, EXTRACTION_PROMPT, ProductModel
+            )
+            if json_data:
+                all_extracted_data.append(json_data)
     return all_extracted_data
