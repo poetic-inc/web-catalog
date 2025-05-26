@@ -3,24 +3,13 @@ import json
 import os
 import re
 from typing import List, Type  # Import Type for type hints
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-from crawl4ai import (
-    AsyncWebCrawler,
-    BrowserConfig,
-    CacheMode,
-    CrawlerRunConfig,
-    URLFilter,
-)
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
 from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
 from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
-
-# PROMPT is no longer directly used by crawl_and_extract_data,
-# but the agent might use it as a default or generate similar content.
-# from prompt import PROMPT
 
 
 class Item(BaseModel):
@@ -46,77 +35,6 @@ class ResponseModel(BaseModel):
     # pagination: str
 
 
-class UniqueURLFilter(URLFilter):
-    def __init__(self):
-        super().__init__(name="UniqueURLFilter")
-        self.seen_urls = set()
-
-    def _normalize_url(self, url: str) -> str:
-        """
-        Normalizes a URL to a canonical form to help identify duplicates.
-        Handles scheme, netloc, path, and query parameters.
-        """
-        parsed_url = urlparse(url)
-
-        # Lowercase scheme and netloc for consistency
-        scheme = parsed_url.scheme.lower()
-        netloc = parsed_url.netloc.lower()
-
-        # Remove 'www.' prefix from netloc if present
-        if netloc.startswith("www."):
-            netloc = netloc[4:]
-
-        # Remove default ports from netloc
-        if (scheme == "http" and netloc.endswith(":80")) or (
-            scheme == "https" and netloc.endswith(":443")
-        ):
-            netloc = netloc.rsplit(":", 1)[0]  # Remove the last colon and port number
-
-        # Remove fragment identifiers (e.g., #section) as they don't change the resource
-        fragment = ""
-
-        # Normalize path:
-        # - Lowercase the path
-        # - If the path is just '/', treat it as empty (e.g., example.com/ is same as example.com)
-        # - Otherwise, remove trailing slashes
-        normalized_path = parsed_url.path.lower()  # Lowercase path
-        if normalized_path == "/":
-            normalized_path = ""
-        elif normalized_path.endswith("/"):
-            normalized_path = normalized_path.rstrip("/")
-
-        # Normalize query parameters: parse, sort by key, and re-encode
-        # This ensures that order of parameters doesn't create a "new" URL
-        query_params = parse_qs(parsed_url.query)
-        sorted_query_items = []
-        for key in sorted(query_params.keys()):
-            # Ensure values for each key are also sorted and normalized (e.g., remove trailing slashes)
-            for value in sorted(query_params[key]):
-                normalized_value = value.rstrip(
-                    "/"
-                )  # Remove trailing slashes from query parameter values
-                sorted_query_items.append((key, normalized_value))
-        query = urlencode(sorted_query_items, doseq=True)
-
-        # Reconstruct the URL from normalized components
-        normalized_url = urlunparse(
-            (scheme, netloc, normalized_path, parsed_url.params, query, fragment)
-        )
-
-        return normalized_url
-
-    def apply(self, url: str) -> bool:
-        normalized_url = self._normalize_url(url)
-        if normalized_url in self.seen_urls:
-            self._update_stats(False)
-            return False
-        else:
-            self.seen_urls.add(normalized_url)
-            self._update_stats(True)
-            return True
-
-
-# Refactored use_llm_free into a more generic tool
 async def crawl_and_extract_data(
     start_url: str,
     page_patterns: List[str],
@@ -221,57 +139,14 @@ async def run_agent(user_instruction: str):
         # Add other potential schemas here if needed
     }
 
-    agent_prompt = f"""
-    You are an intelligent web scraping agent. Your goal is to understand user instructions and generate a plan to scrape and extract relevant data.
-
-    Based on the following user instruction, generate a JSON plan.
-    The JSON plan must strictly adhere to the following structure:
-    - "action": (string) Must be "crawl_and_extract". This is the only supported action for now.
-    - "start_url": (string) The initial URL to start crawling from.
-    - "page_patterns": (list of strings) A list of regex patterns for URLs that should be scraped. Use `.*` for any character. For example, if the user wants product pages, you might use `["https://example.com/products/.*"]`. If they want paginated category pages, `["https://example.com/category.*page=\\d+"]`.
-    - "extraction_prompt": (string) The system instruction for the data extraction LLM. This prompt should guide the LLM on what data to extract and how to format it, based on the user's request.
-    - "extraction_schema_name": (string) The name of the Pydantic model to use for structured extraction (e.g., "ResponseModel").
-    - "max_pages": (integer) The maximum number of pages to crawl.
-    - "max_depth": (integer) The maximum crawl depth.
-
-    The available Pydantic schemas for the "extraction_schema_name" field are:
-    - "ResponseModel": This schema expects the following structure:
-        - page_url (string): The URL of the page.
-        - page_name (string): The name or title of the page.
-        - products (list of Product objects): A list of product details found on the page.
-            - Each Product object has:
-                - category (string): The category of the product.
-                - items (list of Item objects): A list of individual items within that product category.
-                    - Each Item object has:
-                        - name (string): The name of the item.
-                        - price (string): The price of the item.
-                        - url (string): The URL of the item.
-
-    User Instruction: "{user_instruction}"
-
-    Example for "Find all clothing items and their prices from bronsonshop.com/collections/clothing":
-    ```json
-    {{
-        "action": "crawl_and_extract",
-        "start_url": "https://bronsonshop.com/collections/clothing",
-        "page_patterns": [".*bronsonshop.com/collections/clothing.*page=\\d+"],
-        "extraction_prompt": "Extract the category, name, price, and URL for all clothing items on the page. Ensure the output strictly adheres to the ResponseModel schema.",
-        "extraction_schema_name": "ResponseModel",
-        "max_pages": 15,
-        "max_depth": 15
-    }}
-    ```
-    Your JSON plan:
-    """
-
     print(f"Agent received instruction: '{user_instruction}'")
     try:
         agent_response = await agent_llm_client.aio.models.generate_content(
-            model="gemini-2.5-flash-preview-05-20",  # Or gemini-pro for more complex reasoning
+            model="gemini-2.5-flash-preview-05-20",
             contents=agent_prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-                # response_schema=AgentPlan,  # Removed as per request
+                response_schema=AgentPlan,
                 temperature=0.0,
             ),
         )
@@ -336,4 +211,3 @@ if __name__ == "__main__":
             user_instruction="Find all clothing items and their prices from bronsonshop.com/collections/clothing"
         )
     )
-    # asyncio.run(simple_crawl(base_url="https://bronsonshop.com/collections/clothing"))
