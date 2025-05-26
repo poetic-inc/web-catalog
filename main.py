@@ -65,9 +65,10 @@ class UniqueURLFilter(URLFilter):
             netloc = netloc[4:]
 
         # Remove default ports from netloc
-        if (scheme == "http" and netloc.endswith(":80")) or \
-           (scheme == "https" and netloc.endswith(":443")):
-            netloc = netloc.rsplit(':', 1)[0] # Remove the last colon and port number
+        if (scheme == "http" and netloc.endswith(":80")) or (
+            scheme == "https" and netloc.endswith(":443")
+        ):
+            netloc = netloc.rsplit(":", 1)[0]  # Remove the last colon and port number
 
         # Remove fragment identifiers (e.g., #section) as they don't change the resource
         fragment = ""
@@ -76,7 +77,7 @@ class UniqueURLFilter(URLFilter):
         # - Lowercase the path
         # - If the path is just '/', treat it as empty (e.g., example.com/ is same as example.com)
         # - Otherwise, remove trailing slashes
-        normalized_path = parsed_url.path.lower() # Lowercase path
+        normalized_path = parsed_url.path.lower()  # Lowercase path
         if normalized_path == "/":
             normalized_path = ""
         elif normalized_path.endswith("/"):
@@ -89,7 +90,9 @@ class UniqueURLFilter(URLFilter):
         for key in sorted(query_params.keys()):
             # Ensure values for each key are also sorted and normalized (e.g., remove trailing slashes)
             for value in sorted(query_params[key]):
-                normalized_value = value.rstrip('/') # Remove trailing slashes from query parameter values
+                normalized_value = value.rstrip(
+                    "/"
+                )  # Remove trailing slashes from query parameter values
                 sorted_query_items.append((key, normalized_value))
         query = urlencode(sorted_query_items, doseq=True)
 
@@ -142,7 +145,6 @@ async def use_llm_free(base_url: str):
     async with AsyncWebCrawler(config=browser_config) as crawler:
         print(f"Starting deep scrape from {base_url}")
         results = await crawler.arun(base_url, config=crawl_config)
-        print(results)
 
         if not results:
             print(f"Crawler returned no results for {base_url}. No data to process.")
