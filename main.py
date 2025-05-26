@@ -3,7 +3,7 @@ import json
 import os
 import re
 from typing import List
-from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from crawl4ai import (
     AsyncWebCrawler,
@@ -67,10 +67,10 @@ class UniqueURLFilter(URLFilter):
         # - If the path is just '/', treat it as empty (e.g., example.com/ is same as example.com)
         # - Otherwise, remove trailing slashes
         normalized_path = parsed_url.path
-        if normalized_path == '/':
-            normalized_path = ''
-        elif normalized_path.endswith('/'):
-            normalized_path = normalized_path.rstrip('/')
+        if normalized_path == "/":
+            normalized_path = ""
+        elif normalized_path.endswith("/"):
+            normalized_path = normalized_path.rstrip("/")
 
         # Normalize query parameters: parse, sort by key, and re-encode
         # This ensures that order of parameters doesn't create a "new" URL
@@ -82,7 +82,9 @@ class UniqueURLFilter(URLFilter):
         query = urlencode(sorted_query_items, doseq=True)
 
         # Reconstruct the URL from normalized components
-        normalized_url = urlunparse((scheme, netloc, normalized_path, parsed_url.params, query, fragment))
+        normalized_url = urlunparse(
+            (scheme, netloc, normalized_path, parsed_url.params, query, fragment)
+        )
 
         return normalized_url
 
