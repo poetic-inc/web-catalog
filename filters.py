@@ -1,7 +1,5 @@
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
-
 from crawl4ai import URLFilter
-
 
 class UniqueURLFilter(URLFilter):
     def __init__(self):
