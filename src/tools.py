@@ -139,9 +139,18 @@ async def perform_bfs_extraction_workflow(
     max_pages: int = 15,
     max_depth: int = 15,
 ) -> List[dict]:
-    """
-    Performs BFS crawling and extracts data using ProductModel.
-    Supports various optional filters.
+    """Performs a Breadth-First Search (BFS) web crawl starting from a given URL and extracts structured data from pages matching specified patterns.
+
+    This tool crawls web pages using a BFS strategy, meaning it explores all pages at the current depth level before moving to the next. It filters pages based on URL patterns and extracts information according to the ProductModel schema.
+
+    Args:
+        start_url: The initial URL to begin crawling from.
+        page_patterns: A list of string patterns. Only URLs matching these patterns will be scraped. For example, ["/product/", "/item/"].
+        max_pages: The maximum number of pages to crawl. Defaults to 15.
+        max_depth: The maximum depth to crawl from the start_url. Defaults to 15.
+
+    Returns:
+        A list of dictionaries, where each dictionary represents structured data extracted from a scraped page, conforming to the ProductModel. Returns an empty list if no data is extracted or no pages are found.
     """
     all_extracted_data: List[dict] = []
     scraped_pages = await _internal_crawl_pages(
@@ -172,9 +181,18 @@ async def perform_dfs_extraction_workflow(
     max_pages: int = 15,
     max_depth: int = 15,
 ) -> List[dict]:
-    """
-    Performs DFS crawling and extracts data using ProductModel.
-    Supports various optional filters.
+    """Performs a Depth-First Search (DFS) web crawl starting from a given URL and extracts structured data from pages matching specified patterns.
+
+    This tool crawls web pages using a DFS strategy, meaning it explores as far as possible along each branch before backtracking. It filters pages based on URL patterns and extracts information according to the ProductModel schema.
+
+    Args:
+        start_url: The initial URL to begin crawling from.
+        page_patterns: A list of string patterns. Only URLs matching these patterns will be scraped. For example, ["/product/detail", "/article/"]
+        max_pages: The maximum number of pages to crawl. Defaults to 15.
+        max_depth: The maximum depth to crawl from the start_url. Defaults to 15.
+
+    Returns:
+        A list of dictionaries, where each dictionary represents structured data extracted from a scraped page, conforming to the ProductModel. Returns an empty list if no data is extracted or no pages are found.
     """
     all_extracted_data: List[dict] = []
     scraped_pages = await _internal_crawl_pages(
@@ -206,9 +224,19 @@ async def perform_best_first_extraction_workflow(
     max_pages: int = 15,
     max_depth: int = 15,
 ) -> List[dict]:
-    """
-    Performs BestFirst crawling using keywords and extracts data using ProductModel.
-    Supports various optional filters.
+    """Performs a Best-First Search web crawl using keywords to score and prioritize URLs, then extracts structured data from pages matching specified patterns.
+
+    This tool crawls web pages by prioritizing URLs that are most relevant to the provided keywords. It filters pages based on URL patterns and extracts information according to the ProductModel schema.
+
+    Args:
+        start_url: The initial URL to begin crawling from.
+        page_patterns: A list of string patterns. Only URLs matching these patterns will be scraped. For example, ["/product-info/", "/review/"]
+        keywords: A list of keywords used to score and prioritize URLs for crawling. For example, ["camera", "review", "price"].
+        max_pages: The maximum number of pages to crawl. Defaults to 15.
+        max_depth: The maximum depth to crawl from the start_url. Defaults to 15.
+
+    Returns:
+        A list of dictionaries, where each dictionary represents structured data extracted from a scraped page, conforming to the ProductModel. Returns an empty list if no data is extracted or no pages are found.
     """
     all_extracted_data: List[dict] = []
     scraped_pages = await _internal_crawl_pages(
