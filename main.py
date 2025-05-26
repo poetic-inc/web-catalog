@@ -3,6 +3,7 @@ import json
 import os
 import re
 from typing import List
+from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 from crawl4ai import (
     AsyncWebCrawler,
@@ -48,9 +49,45 @@ class UniqueURLFilter(URLFilter):
         super().__init__(name="UniqueURLFilter")
         self.seen_urls = set()
 
+    def _normalize_url(self, url: str) -> str:
+        """
+        Normalizes a URL to a canonical form to help identify duplicates.
+        Handles scheme, netloc, path, and query parameters.
+        """
+        parsed_url = urlparse(url)
+
+        # Lowercase scheme and netloc for consistency
+        scheme = parsed_url.scheme.lower()
+        netloc = parsed_url.netloc.lower()
+
+        # Remove fragment identifiers (e.g., #section) as they don't change the resource
+        fragment = ""
+
+        # Normalize path:
+        # - If the path is just '/', treat it as empty (e.g., example.com/ is same as example.com)
+        # - Otherwise, remove trailing slashes
+        normalized_path = parsed_url.path
+        if normalized_path == '/':
+            normalized_path = ''
+        elif normalized_path.endswith('/'):
+            normalized_path = normalized_path.rstrip('/')
+
+        # Normalize query parameters: parse, sort by key, and re-encode
+        # This ensures that order of parameters doesn't create a "new" URL
+        query_params = parse_qs(parsed_url.query)
+        sorted_query_items = []
+        for key in sorted(query_params.keys()):
+            for value in sorted(query_params[key]):
+                sorted_query_items.append((key, value))
+        query = urlencode(sorted_query_items, doseq=True)
+
+        # Reconstruct the URL from normalized components
+        normalized_url = urlunparse((scheme, netloc, normalized_path, parsed_url.params, query, fragment))
+
+        return normalized_url
+
     def apply(self, url: str) -> bool:
-        # TODO: apply more robust method for filtering duplicate url
-        normalized_url = url.rstrip("/")
+        normalized_url = self._normalize_url(url)
         if normalized_url in self.seen_urls:
             self._update_stats(False)
             return False
