@@ -87,9 +87,10 @@ class UniqueURLFilter(URLFilter):
         query_params = parse_qs(parsed_url.query)
         sorted_query_items = []
         for key in sorted(query_params.keys()):
-            # Ensure values for each key are also sorted
+            # Ensure values for each key are also sorted and normalized (e.g., remove trailing slashes)
             for value in sorted(query_params[key]):
-                sorted_query_items.append((key, value))
+                normalized_value = value.rstrip('/') # Remove trailing slashes from query parameter values
+                sorted_query_items.append((key, normalized_value))
         query = urlencode(sorted_query_items, doseq=True)
 
         # Reconstruct the URL from normalized components
