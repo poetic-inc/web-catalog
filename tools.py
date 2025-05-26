@@ -6,36 +6,18 @@ from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
 from crawl4ai.deep_crawling import BFSDeepCrawlStrategy
 from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
 from google import genai
-from google.genai import types # Corrected import from google.type.types to google.genai.types
+from google.genai import types
 from pydantic import BaseModel
 
-from filters import UniqueURLFilter # Updated import path
-from prompt import EXTRACTION_PROMPT # Updated import path
+from filters import UniqueURLFilter
+from prompt import EXTRACTION_PROMPT
+
+from .models import ProductModel
 
 
-class Item(BaseModel):
-    name: str
-    price: str
-    url: str
-
-
-class Product(BaseModel):
-    category: str
-    items: List[Item]
-
-
-class Page(BaseModel):
-    name: str
-    url: str
-
-
-class ResponseModel(BaseModel):
-    page_url: str
-    page_name: str
-    products: List[Product]
-
-
-async def format_data_md(extracted_content: str, extraction_prompt: str, extraction_schema: Type[BaseModel]):
+async def _format_data_md(
+    extracted_content: str, extraction_prompt: str, extraction_schema: Type[BaseModel]
+):
     """
     Formats markdown content into structured JSON using a Gemini LLM.
 
@@ -71,7 +53,7 @@ async def format_data_md(extracted_content: str, extraction_prompt: str, extract
         return None
 
 
-async def crawl_pages(
+async def _crawl_pages(
     start_url: str,
     page_patterns: List[str],
     max_pages: int = 15,
@@ -115,17 +97,14 @@ async def crawl_pages(
             print(f"Crawler returned no results for {start_url}. No data to process.")
             return []
 
-        print(
-            f"Crawler finished. Found {len(results)} scraped page(s)."
-        )
-        return results # Returns list of ScrapedPage objects
+        print(f"Crawler finished. Found {len(results)} scraped page(s).")
+        return results
 
 
 async def perform_full_extraction_workflow(
     start_url: str,
     page_patterns: List[str],
-    extraction_prompt: str,
-    extraction_schema_name: str, # Agent will provide schema name as string
+    extraction_schema_name: str,
     max_pages: int = 15,
     max_depth: int = 15,
 ) -> List[dict]:
@@ -136,7 +115,6 @@ async def perform_full_extraction_workflow(
     Args:
         start_url: The initial URL to start crawling from.
         page_patterns: A list of regex patterns for URLs that should be scraped.
-        extraction_prompt: The system instruction for the data extraction LLM.
         extraction_schema_name: The name of the Pydantic model to use for structured extraction (e.g., "ResponseModel").
         max_pages: The maximum number of pages to crawl.
         max_depth: The maximum crawl depth.
@@ -145,8 +123,7 @@ async def perform_full_extraction_workflow(
         A list of dictionaries, where each dictionary is the extracted data from a page.
     """
     schema_map = {
-        "ResponseModel": ResponseModel,
-        # Add other potential schemas here if needed
+        "ProductModel": ProductModel,
     }
     extraction_schema_class = schema_map.get(extraction_schema_name)
     if not extraction_schema_class:
@@ -155,22 +132,28 @@ async def perform_full_extraction_workflow(
 
     all_extracted_data: List[dict] = []
 
-    scraped_pages = await crawl_pages(start_url, page_patterns, max_pages, max_depth)
+    scraped_pages = await _crawl_pages(start_url, page_patterns, max_pages, max_depth)
 
     if not scraped_pages:
         return []
 
-    print(f"Processing {len(scraped_pages)} scraped page(s) with Gemini for extraction...")
+    print(
+        f"Processing {len(scraped_pages)} scraped page(s) with Gemini for extraction..."
+    )
     for res in scraped_pages:
         scraped_content = res.markdown
         current_url = res.url
 
         if scraped_content:
             print(f"Sending content from {current_url} to Gemini for formatting...")
-            json_data = await format_data_md(scraped_content, extraction_prompt, extraction_schema_class)
+            json_data = await _format_data_md(
+                scraped_content, EXTRACTION_PROMPT, extraction_schema_class
+            )
             if json_data:
                 all_extracted_data.append(json_data)
         else:
-            print(f"No HTML content extracted from {current_url}. Skipping LLM processing.")
+            print(
+                f"No HTML content extracted from {current_url}. Skipping LLM processing."
+            )
 
     return all_extracted_data
