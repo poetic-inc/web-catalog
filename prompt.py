@@ -23,51 +23,30 @@ You have access to the following tools for web crawling and data extraction:
     - `page_patterns` (list of strings, required): Regex patterns for URLs to scrape. E.g., `[".*example.com/products/.*"]`.
     - `max_pages` (integer, optional, default 15): Maximum number of pages to crawl.
     - `max_depth` (integer, optional, default 15): Maximum crawl depth.
-    - `domain_filter_allowed` (list of strings, optional): List of allowed domains. E.g., `["example.com", "sub.example.com"]`.
-    - `domain_filter_blocked` (list of strings, optional): List of blocked domains. E.g., `["archive.example.com"]`.
-    - `content_type_filter_allowed` (list of strings, optional): List of allowed HTTP Content-Types. E.g., `["text/html", "application/json"]`.
-    - `content_relevance_filter_query` (string, optional): A query string to filter pages by content relevance (BM25 on head section).
-    - `content_relevance_filter_threshold` (float, optional, default 0.7): Minimum similarity score for content relevance.
-    - `seo_filter_keywords` (list of strings, optional): Keywords to look for in page metadata for SEO filtering.
-    - `seo_filter_threshold` (float, optional, default 0.5): Minimum score for SEO filter.
-    Example: `perform_bfs_extraction_workflow(start_url="https://example.com/category", page_patterns=[".*example.com/category/product/.*"], max_pages=20, content_type_filter_allowed=["text/html"])`
+    Example: `perform_bfs_extraction_workflow(start_url="https://example.com/category", page_patterns=[".*example.com/category/product/.*"], max_pages=20)`
 
 2.  `perform_dfs_extraction_workflow`:
     Use this tool for deep exploration down specific paths of a website before exploring siblings (Depth-First Search).
-    Arguments: (Same as `perform_bfs_extraction_workflow`, including all optional filter parameters)
+    Arguments:
     - `start_url` (string, required): The initial URL to begin crawling from.
     - `page_patterns` (list of strings, required): Regex patterns for URLs to scrape.
     - `max_pages` (integer, optional, default 15): Maximum number of pages to crawl.
     - `max_depth` (integer, optional, default 15): Maximum crawl depth.
-    - `domain_filter_allowed` (list of strings, optional): List of allowed domains.
-    - `domain_filter_blocked` (list of strings, optional): List of blocked domains.
-    - `content_type_filter_allowed` (list of strings, optional): List of allowed HTTP Content-Types.
-    - `content_relevance_filter_query` (string, optional): Query for content relevance filter.
-    - `content_relevance_filter_threshold` (float, optional, default 0.7): Threshold for content relevance.
-    - `seo_filter_keywords` (list of strings, optional): Keywords for SEO filter.
-    - `seo_filter_threshold` (float, optional, default 0.5): Threshold for SEO filter.
-    Example: `perform_dfs_extraction_workflow(start_url="https://example.com/blog", page_patterns=[".*example.com/blog/article/.*"], max_depth=5, domain_filter_allowed=["example.com"])`
+    Example: `perform_dfs_extraction_workflow(start_url="https://example.com/blog", page_patterns=[".*example.com/blog/article/.*"], max_depth=5)`
 
 3.  `perform_best_first_extraction_workflow`:
     Use this tool to prioritize crawling pages most relevant to given keywords (Best-First Search).
-    Arguments: (Same as `perform_bfs_extraction_workflow`, plus `keywords`, including all optional filter parameters)
+    Arguments:
     - `start_url` (string, required): The initial URL to begin crawling from.
     - `page_patterns` (list of strings, required): Regex patterns for URLs to scrape.
     - `keywords` (list of strings, required): Keywords to guide the relevance scoring of pages for the BestFirst strategy's `KeywordRelevanceScorer`.
     - `max_pages` (integer, optional, default 15): Maximum number of pages to crawl.
     - `max_depth` (integer, optional, default 15): Maximum crawl depth.
-    - `domain_filter_allowed` (list of strings, optional): List of allowed domains.
-    - `domain_filter_blocked` (list of strings, optional): List of blocked domains.
-    - `content_type_filter_allowed` (list of strings, optional): List of allowed HTTP Content-Types.
-    - `content_relevance_filter_query` (string, optional): Query for content relevance filter.
-    - `content_relevance_filter_threshold` (float, optional, default 0.7): Threshold for content relevance.
-    - `seo_filter_keywords` (list of strings, optional): Keywords for SEO filter.
-    - `seo_filter_threshold` (float, optional, default 0.5): Threshold for SEO filter.
-    Example: `perform_best_first_extraction_workflow(start_url="https://example.com/news", page_patterns=[".*example.com/news/.*"], keywords=["ai", "technology"], max_pages=25, seo_filter_keywords=["breaking news"], seo_filter_threshold=0.6)`
+    Example: `perform_best_first_extraction_workflow(start_url="https://example.com/news", page_patterns=[".*example.com/news/.*"], keywords=["ai", "technology"], max_pages=25)`
 
 When the user asks to scrape data, choose the most appropriate workflow tool and call it with arguments derived from the user's request.
-For example, if the user says "Find all 'vintage shirt' products and their prices from bronsonshop.com/collections/clothing, focusing on relevant items first, and only look at HTML pages.", you might call:
-`perform_best_first_extraction_workflow(start_url="https://bronsonshop.com/collections/clothing", page_patterns=[".*bronsonshop.com/products/.*"], keywords=["vintage", "shirt"], max_pages=30, content_type_filter_allowed=["text/html"])`
-If the user says "Explore all product pages broadly on example.com/shop, but avoid archive.example.com", you might call:
-`perform_bfs_extraction_workflow(start_url="https://example.com/shop", page_patterns=[".*example.com/shop/product/.*"], max_pages=50, max_depth=3, domain_filter_blocked=["archive.example.com"])`
+For example, if the user says "Find all 'vintage shirt' products and their prices from bronsonshop.com/collections/clothing, focusing on relevant items first", you might call:
+`perform_best_first_extraction_workflow(start_url="https://bronsonshop.com/collections/clothing", page_patterns=[".*bronsonshop.com/products/.*"], keywords=["vintage", "shirt"], max_pages=30)`
+If the user says "Explore all product pages broadly on example.com/shop", you might call:
+`perform_bfs_extraction_workflow(start_url="https://example.com/shop", page_patterns=[".*example.com/shop/product/.*"], max_pages=50, max_depth=3)`
 """
