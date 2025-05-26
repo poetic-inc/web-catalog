@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 import re
-from typing import List
+from typing import List, Type # Import Type for type hints
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from crawl4ai import (
@@ -18,7 +18,9 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
-from prompt import PROMPT
+# PROMPT is no longer directly used by crawl_and_extract_data,
+# but the agent might use it as a default or generate similar content.
+# from prompt import PROMPT
 
 
 class Item(BaseModel):
@@ -114,22 +116,30 @@ class UniqueURLFilter(URLFilter):
             return True
 
 
-async def use_llm_free(base_url: str):
+# Refactored use_llm_free into a more generic tool
+async def crawl_and_extract_data(
+    start_url: str,
+    page_patterns: List[str],
+    extraction_prompt: str,
+    extraction_schema: Type[BaseModel], # Use Type for class hint
+    max_pages: int = 15,
+    max_depth: int = 15,
+) -> List[dict]:
     try:
         client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     except Exception as e:
         print(f"Error initializing Gemini client or model: {e}")
-        return
+        return []
 
-    all_extracted_data: List[ResponseModel] = []
+    all_extracted_data: List[dict] = [] # Changed to dict as json.loads returns dict
 
-    url_pattern = r".*\?page=\d+"
-    url_filter = URLPatternFilter(patterns=[url_pattern])
-    filter_chain = FilterChain(filters=[UniqueURLFilter(), url_filter])
+    # Dynamically create URLPatternFilters based on agent's plan
+    url_pattern_filters = [URLPatternFilter(patterns=[p]) for p in page_patterns]
+    filter_chain = FilterChain(filters=[UniqueURLFilter(), *url_pattern_filters])
 
     crawl_strategy = BFSDeepCrawlStrategy(
-        max_depth=15,
-        max_pages=15,
+        max_depth=max_depth,
+        max_pages=max_pages,
         include_external=False,
         filter_chain=filter_chain,
     )
@@ -143,12 +153,12 @@ async def use_llm_free(base_url: str):
     browser_config = BrowserConfig(headless=True)
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
-        print(f"Starting deep scrape from {base_url}")
-        results = await crawler.arun(base_url, config=crawl_config)
+        print(f"Starting deep scrape from {start_url} with patterns: {page_patterns}")
+        results = await crawler.arun(start_url, config=crawl_config)
 
         if not results:
-            print(f"Crawler returned no results for {base_url}. No data to process.")
-            return
+            print(f"Crawler returned no results for {start_url}. No data to process.")
+            return []
 
         print(
             f"Crawler finished. Processing {len(results)} scraped page(s) with Gemini..."
@@ -157,7 +167,6 @@ async def use_llm_free(base_url: str):
         for res in results:
             scraped_content = res.markdown
             current_url = res.url
-            # print(res.links) # Keep this commented out unless you need to see the links again
 
             if scraped_content:
                 print(
@@ -169,9 +178,9 @@ async def use_llm_free(base_url: str):
                         contents=f"Here is the input markdown: {scraped_content}",
                         config=types.GenerateContentConfig(
                             response_mime_type="application/json",
-                            response_schema=ResponseModel,
+                            response_schema=extraction_schema, # Use the dynamic schema
                             temperature=0.0,
-                            system_instruction=PROMPT,
+                            system_instruction=extraction_prompt, # Use the dynamic prompt
                         ),
                     )
                     json_data = json.loads(response.text)
@@ -185,24 +194,120 @@ async def use_llm_free(base_url: str):
                 print(
                     f"No HTML content extracted from {current_url}. Skipping LLM processing for this page."
                 )
+    return all_extracted_data
 
-    print("\n--- Extraction Complete ---")
-    if all_extracted_data:
-        print(f"Successfully extracted data from {len(all_extracted_data)} page(s).")
 
-        # Write data to JSON file
-        data_dir = "data"
-        os.makedirs(data_dir, exist_ok=True)
-        file_path = os.path.join(data_dir, "extracted_data.json")
-        try:
-            with open(file_path, "w", encoding="utf-8") as f:
-                data_to_write = [item for item in all_extracted_data]
-                json.dump(data_to_write, f, indent=4)
-            print(f"Successfully wrote extracted data to {file_path}")
-        except IOError as e:
-            print(f"Error writing data to {file_path}: {e}")
-    else:
-        print("No data was extracted from any page.")
+# New: Agent Orchestrator
+class AgentPlan(BaseModel):
+    action: str
+    start_url: str
+    page_patterns: List[str]
+    extraction_prompt: str
+    extraction_schema_name: str  # e.g., "ResponseModel"
+    max_pages: int = 15
+    max_depth: int = 15
+
+
+async def run_agent(user_instruction: str):
+    try:
+        agent_llm_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    except Exception as e:
+        print(f"Error initializing Gemini client for agent: {e}")
+        return
+
+    # Map schema names to actual Pydantic classes
+    schema_map = {
+        "ResponseModel": ResponseModel,
+        # Add other potential schemas here if needed
+    }
+
+    agent_prompt = f"""
+    You are an intelligent web scraping agent. Your goal is to understand user instructions and generate a plan to scrape and extract relevant data.
+
+    Based on the following user instruction, generate a JSON plan.
+    The plan must include:
+    - "action": "crawl_and_extract" (this is the only supported action for now)
+    - "start_url": The initial URL to start crawling from.
+    - "page_patterns": A list of regex patterns for URLs that should be scraped. Use `.*` for any character. For example, if the user wants product pages, you might use `["https://example.com/products/.*"]`. If they want paginated category pages, `["https://example.com/category.*page=\\d+"]`.
+    - "extraction_prompt": The system instruction for the data extraction LLM. This prompt should guide the LLM on what data to extract and how to format it, based on the user's request.
+    - "extraction_schema_name": The name of the Pydantic model to use for structured extraction (e.g., "ResponseModel").
+    - "max_pages": The maximum number of pages to crawl.
+    - "max_depth": The maximum crawl depth.
+
+    Available Pydantic schemas for extraction:
+    - ResponseModel:
+        page_url: str
+        page_name: str
+        products: List[Product] (Product has category: str, items: List[Item]) (Item has name: str, price: str, url: str)
+
+    User Instruction: "{user_instruction}"
+
+    Example for "Find all clothing items and their prices from bronsonshop.com/collections/clothing":
+    ```json
+    {{
+        "action": "crawl_and_extract",
+        "start_url": "https://bronsonshop.com/collections/clothing",
+        "page_patterns": [".*bronsonshop.com/collections/clothing.*page=\\d+"],
+        "extraction_prompt": "Extract the category, name, price, and URL for all clothing items on the page. Ensure the output strictly adheres to the ResponseModel schema.",
+        "extraction_schema_name": "ResponseModel",
+        "max_pages": 15,
+        "max_depth": 15
+    }}
+    ```
+    Your JSON plan:
+    """
+
+    print(f"Agent received instruction: '{user_instruction}'")
+    try:
+        agent_response = await agent_llm_client.aio.models.generate_content(
+            model="gemini-2.5-flash-preview-05-20",  # Or gemini-pro for more complex reasoning
+            contents=agent_prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=AgentPlan,  # Guide the agent to output the plan in this schema
+                temperature=0.0,
+            ),
+        )
+        plan_data = json.loads(agent_response.text)
+        plan = AgentPlan(**plan_data)
+
+        if plan.action == "crawl_and_extract":
+            extraction_schema_class = schema_map.get(plan.extraction_schema_name)
+            if not extraction_schema_class:
+                print(f"Error: Unknown extraction schema name: {plan.extraction_schema_name}")
+                return
+
+            print(f"Agent decided to execute plan: {plan.model_dump_json(indent=2)}")
+            extracted_data = await crawl_and_extract_data(
+                start_url=plan.start_url,
+                page_patterns=plan.page_patterns,
+                extraction_prompt=plan.extraction_prompt,
+                extraction_schema=extraction_schema_class,
+                max_pages=plan.max_pages,
+                max_depth=plan.max_depth,
+            )
+            print("\n--- Agent Workflow Complete ---")
+            if extracted_data:
+                print(f"Agent successfully extracted data from {len(extracted_data)} page(s).")
+
+                # Write data to JSON file
+                data_dir = "data"
+                os.makedirs(data_dir, exist_ok=True)
+                file_path = os.path.join(data_dir, "agent_extracted_data.json")
+                try:
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        json.dump(extracted_data, f, indent=4)
+                    print(f"Successfully wrote agent extracted data to {file_path}")
+                except IOError as e:
+                    print(f"Error writing data to {file_path}: {e}")
+            else:
+                print("Agent extracted no data.")
+        else:
+            print(f"Agent generated an unsupported action: {plan.action}")
+
+    except Exception as e:
+        print(f"Error in agent orchestration: {e}")
+        print(f"Agent response text (if available): {getattr(agent_response, 'text', 'N/A')}")
 
 
 async def simple_crawl(base_url: str):
@@ -212,5 +317,6 @@ async def simple_crawl(base_url: str):
 
 
 if __name__ == "__main__":
-    asyncio.run(use_llm_free(base_url="https://bronsonshop.com/collections/clothing"))
+    # Example usage of the agent
+    asyncio.run(run_agent(user_instruction="Find all clothing items and their prices from bronsonshop.com/collections/clothing"))
     # asyncio.run(simple_crawl(base_url="https://bronsonshop.com/collections/clothing"))
