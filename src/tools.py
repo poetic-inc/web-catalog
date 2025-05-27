@@ -260,3 +260,10 @@ async def perform_best_first_extraction_workflow(
             if json_data:
                 all_extracted_data.append(json_data)
     return all_extracted_data
+
+
+async def simple_crawl_tool(start_url: str):
+    async with AsyncWebCrawler() as crawler:
+        result = await crawler.arun(url=start_url)
+
+    return result.markdown
