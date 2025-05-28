@@ -14,6 +14,10 @@ Return your analysis in a structured format. This analysis will be used by anoth
 data extraction workflow.
 """
 
+FILTERING_AGENT_PROMPT = """
+
+"""
+
 EXTRACTION_AGENT_PROMPT = """
 You are an intelligent web scraping agent. Your goal is to understand user instructions and orchestrate a flexible, multi-step process to scrape and extract relevant data. The typical workflow involves: [1] Page Analysis, [2] Filter Creation, and [3] Crawling & Extraction. You will decide which steps are necessary based on the user's request and any existing context.
 
@@ -110,46 +114,5 @@ Focus on extracting:
 Ensure all fields are populated accurately based on the content. If a piece of information is not present, omit that specific field or provide an empty list/string as appropriate for the schema. Do not invent data.
 """
 
-# Here is the analysis from an analyst agent:
-
-# {}
-
-
-# You have access to the following tools for web crawling and data extraction:
-
-# 1.  `perform_bfs_extraction_workflow`:
-#     Use this tool for broad, level-by-level exploration of a website (Breadth-First Search).
-#     Arguments:
-#     - `start_url` (string, required): The initial URL to begin crawling from.
-#     - `page_patterns` (list of strings, optional): Regex patterns for URLs to scrape. E.g., `[".*example.com/products/.*"]`.
-#     - `max_pages` (integer, optional, default 15): Maximum number of pages to crawl.
-#     - `max_depth` (integer, optional, default 15): Maximum crawl depth.
-#     Example: `perform_bfs_extraction_workflow(start_url="https://example.com/category", page_patterns=[".*example.com/category/product/.*"], max_pages=20)`
-
-# 2.  `perform_dfs_extraction_workflow`:
-#     Use this tool for deep exploration down specific paths of a website before exploring siblings (Depth-First Search).
-#     Arguments:
-#     - `start_url` (string, required): The initial URL to begin crawling from.
-#     - `page_patterns` (list of strings, optional): Regex patterns for URLs to scrape.
-#     - `max_pages` (integer, optional, default 15): Maximum number of pages to crawl.
-#     - `max_depth` (integer, optional, default 15): Maximum crawl depth.
-#     Example: `perform_dfs_extraction_workflow(start_url="https://example.com/blog", page_patterns=[".*example.com/blog/article/.*"], max_depth=5)`
-
-# 3.  `perform_best_first_extraction_workflow`:
-#     Use this tool to prioritize crawling pages most relevant to given keywords (Best-First Search).
-#     Arguments:
-#     - `start_url` (string, required): The initial URL to begin crawling from.
-#     - `keywords` (list of strings, required): Keywords to guide the relevance scoring of pages for the BestFirst strategy's `KeywordRelevanceScorer`. Keyword only applies and scores url found on a page.
-#     - `page_patterns` (list of strings, optional): Regex patterns for URLs to scrape.
-#     - `max_pages` (integer, optional, default 15): Maximum number of pages to crawl.
-#     - `max_depth` (integer, optional, default 15): Maximum crawl depth.
-#     Example: `perform_best_first_extraction_workflow(start_url="https://example.com/news", page_patterns=[".*example.com/news/.*"], keywords=["ai", "technology"], max_pages=25)`
-
-# 4. `simple-crawl_tool`
-#     Use this tool to scrape the content of a webpage for analysis.
-#     Arguments:
-#     - `start_url` (string, required): The initial URL to scrape for analysis.
-
-
-# Crawl all paginated pages and scrape contents from them. Only crawl paginated pages and
-# no other links. Here is the starting url: https://bronsonshop.com/collections/clothing
+COORDINATOR_AGENT_PROMPT = """
+"""
