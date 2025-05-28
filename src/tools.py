@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Type
+from typing import List, Optional, Type
 
 from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
 from crawl4ai.content_scraping_strategy import LXMLWebScrapingStrategy
@@ -9,7 +9,14 @@ from crawl4ai.deep_crawling import (
     BFSDeepCrawlStrategy,
     DFSDeepCrawlStrategy,
 )
-from crawl4ai.deep_crawling.filters import FilterChain, URLPatternFilter
+from crawl4ai.deep_crawling.filters import (
+    ContentRelevanceFilter,
+    ContentTypeFilter,
+    DomainFilter,
+    FilterChain,
+    SEOFilter,
+    URLPatternFilter,
+)
 from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
 from google import genai
 from google.genai import types
@@ -62,8 +69,8 @@ async def _internal_crawl_pages(
     start_url: str,
     strategy_type: str,
     page_patterns: List[str] = None,
-    max_pages: int = 15,
-    max_depth: int = 3,
+    max_pages: int = None,
+    max_depth: int = None,
     keywords: List[str] = None,
 ):
     """
@@ -139,8 +146,8 @@ async def _internal_crawl_pages(
 async def perform_bfs_extraction_workflow(
     start_url: str,
     page_patterns: List[str],
-    max_pages: int,
-    max_depth: int,
+    max_pages: int = 15,
+    max_depth: int = 3,
 ) -> List[dict]:
     """Performs a Breadth-First Search (BFS) web crawl starting from a given URL and extracts structured data from pages matching specified patterns.
 
@@ -149,6 +156,7 @@ async def perform_bfs_extraction_workflow(
     Args:
         start_url: The initial URL to begin crawling from.
         page_patterns: A list of string patterns. Only URLs matching these patterns will be scraped. Supports both wildcard syntax and regex for more complex pattern.
+        filter_type: filters to select urls to crawl. Five modes available: url, domain, content-type, content-relevance and seo.
         max_pages: The maximum number of pages to crawl.
         max_depth: The maximum depth to crawl from the start_url.
 
@@ -181,8 +189,8 @@ async def perform_bfs_extraction_workflow(
 async def perform_dfs_extraction_workflow(
     start_url: str,
     page_patterns: List[str],
-    max_pages: int,
-    max_depth: int,
+    max_pages: int = 15,
+    max_depth: int = 3,
 ) -> List[dict]:
     """Performs a Depth-First Search (DFS) web crawl starting from a given URL and extracts structured data from pages matching specified patterns.
 
@@ -224,8 +232,8 @@ async def perform_best_first_extraction_workflow(
     start_url: str,
     page_patterns: List[str],
     keywords: List[str],
-    max_pages: int,
-    max_depth: int,
+    max_pages: int = 15,
+    max_depth: int = 3,
 ) -> List[dict]:
     """Performs a Best-First Search web crawl using keywords to score and prioritize URLs, then extracts structured data from pages matching specified patterns.
 
@@ -285,3 +293,33 @@ async def simple_crawl_tool(start_url: str) -> str:
         result = await crawler.arun(url=start_url)
 
     return result.markdown if result and result.markdown else ""
+
+
+async def filter_generation_tool(
+    url_filter_args: Optional[dict] = None,
+    domain_filter_args: Optional[dict] = None,
+    content_type_filter_args: Optional[dict] = None,
+):
+
+    filters = []
+
+    if url_filter_args:
+        patterns = url_filter_args["patterns"]
+        url_filter = URLPatternFilter(patterns=patterns)
+        filters.extend(url_filter)
+
+    if domain_filter_args:
+        allowed = (domain_filter_args["allowed"],)
+        blocked = (domain_filter_args["blocked"],)
+        domain_filter = DomainFilter(
+            allowed_domains=allowed,
+            blocked_domains=blocked,
+        )
+        filters.extend(domain_filter)
+
+    if content_type_filter_args:
+        allowed = content_type_filter_args["allowed"]
+        content_type_filter = ContentTypeFilter(allowed_types=allowed)
+        filters.extend(content_type_filter)
+
+    return filters
