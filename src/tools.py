@@ -300,7 +300,67 @@ async def filter_generation_tool(
     domain_filter_args: Optional[dict] = None,
     content_type_filter_args: Optional[dict] = None,
 ):
+    """
+    Constructs a list of crawl4ai filter instances based on provided arguments.
 
+    This tool is designed to be called by an LLM or a higher-level agent
+    to dynamically create filters for web crawling tasks based on user
+    instructions or inferred requirements. Each argument corresponds to a
+    specific type of filter from the crawl4ai library. The created filters
+    can then be used in a crawl4ai FilterChain.
+
+    Args:
+        url_filter_args (Optional[dict]): Arguments for creating a
+            `crawl4ai.deep_crawling.filters.URLPatternFilter`.
+            If provided, it should be a dictionary with the following key:
+            - "patterns" (List[str]): A list of regex patterns. URLs matching
+              any of these patterns will be processed by the crawler if this
+              filter is applied.
+              Example: `{"patterns": [".*example.com/products/.*", ".*category/items/.*"]}`
+
+        domain_filter_args (Optional[dict]): Arguments for creating a
+            `crawl4ai.deep_crawling.filters.DomainFilter`.
+            If provided, it should be a dictionary with one or both of the
+            following keys:
+            - "allowed" (List[str]): A list of domain names (e.g., "example.com")
+              from which URLs are allowed.
+            - "blocked" (List[str]): A list of domain names from which URLs are
+              blocked.
+            Example: `{"allowed": ["example.com", "another.org"], "blocked": ["ads.example.com"]}`
+
+        content_type_filter_args (Optional[dict]): Arguments for creating a
+            `crawl4ai.deep_crawling.filters.ContentTypeFilter`.
+            If provided, it should be a dictionary with the following key:
+            - "allowed" (List[str]): A list of allowed MIME types (e.g.,
+              "text/html", "application/json"). Only URLs whose content type
+              matches one of these will be processed.
+            Note: The underlying `crawl4ai.deep_crawling.filters.ContentTypeFilter`
+            also supports "blocked_types", but this tool currently only exposes
+            the "allowed" types functionality.
+            Example: `{"allowed": ["text/html", "application/pdf"]}`
+
+    Returns:
+        List[URLFilter]: A list containing the configured filter instances from
+                         `crawl4ai.deep_crawling.filters`. This list can be
+                         passed to a `crawl4ai.deep_crawling.filters.FilterChain`.
+                         Returns an empty list if no arguments are provided or if
+                         the provided arguments do not lead to the creation of any filters.
+
+    Example of how an LLM might be instructed to use this tool:
+    User instruction: "Crawl product pages on 'my-shop.com' but only look at HTML pages, and avoid the 'archive.my-shop.com' subdomain."
+
+    LLM conceptual call:
+    ```
+    filter_generation_tool(
+        url_filter_args={"patterns": [".*my-shop.com/product/.*"]},
+        domain_filter_args={"allowed": ["my-shop.com"], "blocked": ["archive.my-shop.com"]},
+        content_type_filter_args={"allowed": ["text/html"]}
+    )
+    ```
+    This would conceptually return a list of filter objects like:
+    `[URLPatternFilter_instance, DomainFilter_instance, ContentTypeFilter_instance]`
+    where each instance is configured according to the arguments.
+    """
     filters = []
 
     if url_filter_args:
