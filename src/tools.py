@@ -15,20 +15,20 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
-from .filters import UniqueURLFilter
-from .models import ProductModel
-from .prompt import EXTRACTION_PROMPT
+from filters import UniqueURLFilter
+from models import ProductModel
+from prompt import FORMATTING_PROMPT
 
 
 async def _format_data_md(
-    extracted_content: str, extraction_prompt: str, extraction_schema: Type[BaseModel]
+    extracted_content: str, formatting_prompt: str, extraction_schema: Type[BaseModel]
 ):
     """
     Formats markdown content into structured JSON using a Gemini LLM.
 
     Args:
         extracted_content: The markdown content to format.
-        extraction_prompt: The system instruction for the LLM.
+        formatting_prompt: The system instruction for the LLM.
         extraction_schema: The Pydantic model to enforce the output structure.
 
     Returns:
@@ -48,7 +48,7 @@ async def _format_data_md(
                 response_mime_type="application/json",
                 response_schema=extraction_schema,
                 temperature=0.0,
-                system_instruction=extraction_prompt,
+                system_instruction=formatting_prompt,
             ),
         )
         json_data = json.loads(res.text)
@@ -60,19 +60,22 @@ async def _format_data_md(
 
 async def _internal_crawl_pages(
     start_url: str,
-    page_patterns: List[str],
     strategy_type: str,
+    page_patterns: List[str] = None,
     max_pages: int = 15,
-    max_depth: int = 15,
+    max_depth: int = 3,
     keywords: List[str] = None,
 ):
     """
     Internal helper to perform web crawling with a specified strategy and filters.
     """
-    active_filters = [UniqueURLFilter()]
-    active_filters.extend([URLPatternFilter(patterns=[p]) for p in page_patterns])
-
-    filter_chain = FilterChain(filters=active_filters)
+    # TODO: implement different filter strategies
+    filter_chain = FilterChain(
+        [
+            UniqueURLFilter(),
+            URLPatternFilter(patterns=page_patterns),
+        ]
+    )
 
     if strategy_type == "BFS":
         crawl_strategy = BFSDeepCrawlStrategy(
@@ -136,8 +139,8 @@ async def _internal_crawl_pages(
 async def perform_bfs_extraction_workflow(
     start_url: str,
     page_patterns: List[str],
-    max_pages: int = 15,
-    max_depth: int = 15,
+    max_pages: int,
+    max_depth: int,
 ) -> List[dict]:
     """Performs a Breadth-First Search (BFS) web crawl starting from a given URL and extracts structured data from pages matching specified patterns.
 
@@ -145,9 +148,9 @@ async def perform_bfs_extraction_workflow(
 
     Args:
         start_url: The initial URL to begin crawling from.
-        page_patterns: A list of string patterns. Only URLs matching these patterns will be scraped. For example, ["/product/", "/item/"].
-        max_pages: The maximum number of pages to crawl. Defaults to 15.
-        max_depth: The maximum depth to crawl from the start_url. Defaults to 15.
+        page_patterns: A list of string patterns. Only URLs matching these patterns will be scraped. Supports both wildcard syntax and regex for more complex pattern.
+        max_pages: The maximum number of pages to crawl.
+        max_depth: The maximum depth to crawl from the start_url.
 
     Returns:
         A list of dictionaries, where each dictionary represents structured data extracted from a scraped page, conforming to the ProductModel. Returns an empty list if no data is extracted or no pages are found.
@@ -168,7 +171,7 @@ async def perform_bfs_extraction_workflow(
     for res in scraped_pages:
         if res.markdown:
             json_data = await _format_data_md(
-                res.markdown, EXTRACTION_PROMPT, ProductModel
+                res.markdown, FORMATTING_PROMPT, ProductModel
             )
             if json_data:
                 all_extracted_data.append(json_data)
@@ -178,8 +181,8 @@ async def perform_bfs_extraction_workflow(
 async def perform_dfs_extraction_workflow(
     start_url: str,
     page_patterns: List[str],
-    max_pages: int = 15,
-    max_depth: int = 15,
+    max_pages: int,
+    max_depth: int,
 ) -> List[dict]:
     """Performs a Depth-First Search (DFS) web crawl starting from a given URL and extracts structured data from pages matching specified patterns.
 
@@ -187,9 +190,9 @@ async def perform_dfs_extraction_workflow(
 
     Args:
         start_url: The initial URL to begin crawling from.
-        page_patterns: A list of string patterns. Only URLs matching these patterns will be scraped. For example, ["/product/detail", "/article/"]
-        max_pages: The maximum number of pages to crawl. Defaults to 15.
-        max_depth: The maximum depth to crawl from the start_url. Defaults to 15.
+        page_patterns: A list of string patterns. Only URLs matching these patterns will be scraped. Supports both wildcard syntax and regex for more complex pattern.
+        max_pages: The maximum number of pages to crawl.
+        max_depth: The maximum depth to crawl from the start_url.
 
     Returns:
         A list of dictionaries, where each dictionary represents structured data extracted from a scraped page, conforming to the ProductModel. Returns an empty list if no data is extracted or no pages are found.
@@ -210,7 +213,7 @@ async def perform_dfs_extraction_workflow(
     for res in scraped_pages:
         if res.markdown:
             json_data = await _format_data_md(
-                res.markdown, EXTRACTION_PROMPT, ProductModel
+                res.markdown, FORMATTING_PROMPT, ProductModel
             )
             if json_data:
                 all_extracted_data.append(json_data)
@@ -221,8 +224,8 @@ async def perform_best_first_extraction_workflow(
     start_url: str,
     page_patterns: List[str],
     keywords: List[str],
-    max_pages: int = 15,
-    max_depth: int = 15,
+    max_pages: int,
+    max_depth: int,
 ) -> List[dict]:
     """Performs a Best-First Search web crawl using keywords to score and prioritize URLs, then extracts structured data from pages matching specified patterns.
 
@@ -230,10 +233,10 @@ async def perform_best_first_extraction_workflow(
 
     Args:
         start_url: The initial URL to begin crawling from.
-        page_patterns: A list of string patterns. Only URLs matching these patterns will be scraped. For example, ["/product-info/", "/review/"]
+        page_patterns: A list of string patterns. Only URLs matching these patterns will be scraped. Supports both wildcard syntax and regex for more complex pattern.
         keywords: A list of keywords used to score and prioritize URLs for crawling. For example, ["camera", "review", "price"].
-        max_pages: The maximum number of pages to crawl. Defaults to 15.
-        max_depth: The maximum depth to crawl from the start_url. Defaults to 15.
+        max_pages: The maximum number of pages to crawl.
+        max_depth: The maximum depth to crawl from the start_url.
 
     Returns:
         A list of dictionaries, where each dictionary represents structured data extracted from a scraped page, conforming to the ProductModel. Returns an empty list if no data is extracted or no pages are found.
@@ -255,7 +258,7 @@ async def perform_best_first_extraction_workflow(
     for res in scraped_pages:
         if res.markdown:
             json_data = await _format_data_md(
-                res.markdown, EXTRACTION_PROMPT, ProductModel
+                res.markdown, FORMATTING_PROMPT, ProductModel
             )
             if json_data:
                 all_extracted_data.append(json_data)
@@ -270,7 +273,7 @@ async def simple_crawl_tool(start_url: str) -> str:
     and potential areas of interest before deciding on more complex crawling or data extraction strategies.
 
     Args:
-        start_url: The URL of the web page to crawl. For example, "https://example.com/article/123".
+        start_url: The URL of the web page to crawl
 
     Returns:
         A string containing the markdown representation of the main content of the scraped web page.
@@ -278,6 +281,7 @@ async def simple_crawl_tool(start_url: str) -> str:
         to produce markdown.
     """
     async with AsyncWebCrawler() as crawler:
+        print(f"Running ananlysis on the page: {start_url}...")
         result = await crawler.arun(url=start_url)
 
     return result.markdown if result and result.markdown else ""
