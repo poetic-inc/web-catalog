@@ -9,16 +9,69 @@ from crawl4ai.deep_crawling.filters import (
 
 
 async def url_filter_tool(patterns: str):
+    """
+    Creates a URLPatternFilter instance from crawl4ai.
+
+    This tool constructs a filter that allows crawling based on URL patterns.
+    It's designed to be used by an LLM or a higher-level agent to specify
+    which URLs should be included or excluded during a crawl based on
+    wildcard or regex patterns.
+
+    Args:
+        patterns (str): A string containing wildcard or regex patterns.
+                        URLs matching any of these patterns will be processed
+                        by the crawler if this filter is applied.
+                        Example: ".*example.com/products/.*,.*category/items/.*"
+
+    Returns:
+        URLPatternFilter: An instance of the crawl4ai URLPatternFilter
+                          configured with the provided patterns.
+    """
     url_filter = URLPatternFilter(patterns=patterns)
     return url_filter
 
 
 async def domain_filter_tool(allowed: List[str], blocked: List[str]):
+    """
+    Creates a DomainFilter instance from crawl4ai.
+
+    This tool constructs a filter that allows or blocks crawling based on domain names.
+    It's useful for restricting the crawl to specific domains or preventing
+    the crawler from accessing certain domains.
+
+    Args:
+        allowed (List[str]): A list of domain names (e.g., "example.com")
+                             from which URLs are allowed. If empty, all domains
+                             not explicitly blocked are implicitly allowed (depending
+                             on other filters).
+        blocked (List[str]): A list of domain names from which URLs are
+                             blocked. URLs from these domains will not be crawled.
+
+    Returns:
+        DomainFilter: An instance of the crawl4ai DomainFilter configured
+                      with the provided allowed and blocked domains.
+    """
     domain_filter = DomainFilter(allowed_domains=allowed, blocked_domains=blocked)
     return domain_filter
 
 
 async def content_type_filter_tool(allowed: List[str]):
+    """
+    Creates a ContentTypeFilter instance from crawl4ai.
+
+    This tool constructs a filter that allows crawling based on the MIME content type
+    of the web resources. It helps in focusing the crawl on specific types of
+    content, such as HTML pages or PDF documents.
+
+    Args:
+        allowed (List[str]): A list of allowed MIME types (e.g.,
+                             "text/html", "application/json"). Only URLs whose
+                             content type matches one of these will be processed.
+
+    Returns:
+        ContentTypeFilter: An instance of the crawl4ai ContentTypeFilter
+                           configured with the provided allowed content types.
+    """
     content_filter = ContentTypeFilter(allowed_types=allowed)
     return content_filter
 
