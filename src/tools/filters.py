@@ -8,6 +8,10 @@ from crawl4ai.deep_crawling.filters import (
 )
 
 
+async def filter_generation_tool(filter_args: dict):
+    return
+
+
 async def url_filter_tool(patterns: str):
     """
     Creates a URLPatternFilter instance from crawl4ai.
