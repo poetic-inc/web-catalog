@@ -29,7 +29,7 @@ Inputs you will consider:
 
 Based on these inputs, you will decide which filter(s) to create and with what parameters.
 
-Your task is to analyze the provided information (user query + page analysis) and then call one or more of these tools with the appropriate arguments to generate the necessary filter instances. If multiple filters are needed, you may need to call the tools multiple times or determine if a combined approach is best.
+Your task is to analyze the provided information (user query + page analysis) and then call the available filter tools with the appropriate arguments to generate the necessary filter configurations. You can use any combination of the available filter tools (URL pattern, domain, content type) to achieve the desired filtering. If multiple types of filters are needed (e.g., a URL pattern filter AND a domain filter), you should call the respective tools to create configurations for each.
 Return a list of filter configurations, where each configuration is a dictionary describing the filter type and its parameters.
 """
 
