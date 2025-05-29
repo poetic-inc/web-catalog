@@ -38,15 +38,15 @@ async def _crawl_pages(
         filter_objs = []
         for f in filters:
             if f["type"] == "url_pattern":
-                filters.extend(URLPatternFilter(patterns=f["patterns"]))
+                filter_objs.append(URLPatternFilter(patterns=f["patterns"]))
             elif f["type"] == "domain":
-                filters.extend(
+                filter_objs.append(
                     DomainFilter(
-                        allowed_domains=f["allowed"], blocked_domains=f["blocked"]
+                        allowed_domains=f["allowed_domains"], blocked_domains=f["blocked_domains"]
                     )
                 )
             elif f["type"] == "content_type":
-                filters.extend(ContentTypeFilter(allowed_types=f["allowed_types"]))
+                filter_objs.append(ContentTypeFilter(allowed_types=f["allowed_types"]))
             else:
                 continue
 
