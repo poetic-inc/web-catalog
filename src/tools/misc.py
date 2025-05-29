@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from crawl4ai import AsyncWebCrawler
 
 
