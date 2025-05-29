@@ -17,8 +17,10 @@ async def url_filter_tool(patterns: str):
                         Example: ".*example.com/products/.*,.*category/items/.*"
 
     Returns:
-        dict: A dictionary describing the URL pattern filter,
-              e.g., {"type": "url_pattern", "patterns": ".*example.com/products/.*"}
+        dict: A dictionary representing the configuration for a URL pattern filter.
+              This dictionary includes the filter type ("url_pattern") and the
+              patterns string.
+              Example: `{"type": "url_pattern", "patterns": ".*example.com/products/.*"}`
     """
     return {"type": "url_pattern", "patterns": patterns}
 
@@ -40,8 +42,10 @@ async def domain_filter_tool(allowed: List[str], blocked: List[str]):
                              blocked. URLs from these domains will not be crawled.
 
     Returns:
-        dict: A dictionary describing the domain filter,
-              e.g., {"type": "domain", "allowed_domains": ["example.com"], "blocked_domains": ["ads.example.com"]}
+        dict: A dictionary representing the configuration for a domain filter.
+              This dictionary includes the filter type ("domain"), a list of
+              allowed domains, and a list of blocked domains.
+              Example: `{"type": "domain", "allowed_domains": ["example.com"], "blocked_domains": ["ads.example.com"]}`
     """
     return {"type": "domain", "allowed_domains": allowed, "blocked_domains": blocked}
 
@@ -60,7 +64,9 @@ async def content_type_filter_tool(allowed: List[str]):
                              content type matches one of these will be processed.
 
     Returns:
-        dict: A dictionary describing the content type filter,
-              e.g., {"type": "content_type", "allowed_types": ["text/html"]}
+        dict: A dictionary representing the configuration for a content type filter.
+              This dictionary includes the filter type ("content_type") and a list
+              of allowed MIME types.
+              Example: `{"type": "content_type", "allowed_types": ["text/html"]}`
     """
     return {"type": "content_type", "allowed_types": allowed}
