@@ -28,11 +28,10 @@ async def url_filter_tool(patterns: str):
                         Example: ".*example.com/products/.*,.*category/items/.*"
 
     Returns:
-        URLPatternFilter: An instance of the crawl4ai URLPatternFilter
-                          configured with the provided patterns.
+        dict: A dictionary describing the URL pattern filter,
+              e.g., {"type": "url_pattern", "patterns": ".*example.com/products/.*"}
     """
-    url_filter = URLPatternFilter(patterns=patterns)
-    return url_filter
+    return {"type": "url_pattern", "patterns": patterns}
 
 
 async def domain_filter_tool(allowed: List[str], blocked: List[str]):
@@ -52,11 +51,10 @@ async def domain_filter_tool(allowed: List[str], blocked: List[str]):
                              blocked. URLs from these domains will not be crawled.
 
     Returns:
-        DomainFilter: An instance of the crawl4ai DomainFilter configured
-                      with the provided allowed and blocked domains.
+        dict: A dictionary describing the domain filter,
+              e.g., {"type": "domain", "allowed_domains": ["example.com"], "blocked_domains": ["ads.example.com"]}
     """
-    domain_filter = DomainFilter(allowed_domains=allowed, blocked_domains=blocked)
-    return domain_filter
+    return {"type": "domain", "allowed_domains": allowed, "blocked_domains": blocked}
 
 
 async def content_type_filter_tool(allowed: List[str]):
@@ -73,11 +71,10 @@ async def content_type_filter_tool(allowed: List[str]):
                              content type matches one of these will be processed.
 
     Returns:
-        ContentTypeFilter: An instance of the crawl4ai ContentTypeFilter
-                           configured with the provided allowed content types.
+        dict: A dictionary describing the content type filter,
+              e.g., {"type": "content_type", "allowed_types": ["text/html"]}
     """
-    content_filter = ContentTypeFilter(allowed_types=allowed)
-    return content_filter
+    return {"type": "content_type", "allowed_types": allowed}
 
 
 # async def filter_generation_tool(

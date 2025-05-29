@@ -30,7 +30,7 @@ Inputs you will consider:
 Based on these inputs, you will decide which filter(s) to create and with what parameters.
 
 Your task is to analyze the provided information (user query + page analysis) and then call one or more of these tools with the appropriate arguments to generate the necessary filter instances. If multiple filters are needed, you may need to call the tools multiple times or determine if a combined approach is best.
-Return the created filter object(s).
+Return a list of filter configurations, where each configuration is a dictionary describing the filter type and its parameters.
 """
 
 EXTRACTION_AGENT_PROMPT = """
