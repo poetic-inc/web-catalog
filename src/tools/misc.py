@@ -18,6 +18,10 @@ async def simple_crawl_tool(start_url: str) -> str:
         Returns an empty string if the page has no extractable markdown content or if the crawl fails
         to produce markdown.
     """
+    parsed_url = urlparse(start_url)
+    if not parsed_url.scheme:
+        start_url = "https://" + start_url
+
     async with AsyncWebCrawler() as crawler:
         print(f"Running ananlysis on the page: {start_url}...")
         result = await crawler.arun(url=start_url)
