@@ -42,7 +42,8 @@ async def _crawl_pages(
             elif f["type"] == "domain":
                 filter_objs.append(
                     DomainFilter(
-                        allowed_domains=f["allowed_domains"], blocked_domains=f["blocked_domains"]
+                        allowed_domains=f["allowed_domains"],
+                        blocked_domains=f["blocked_domains"],
                     )
                 )
             elif f["type"] == "content_type":

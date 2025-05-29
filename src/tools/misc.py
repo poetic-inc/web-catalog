@@ -18,7 +18,7 @@ async def simple_crawl_tool(start_url: str) -> str:
         Returns an empty string if the page has no extractable markdown content or if the crawl fails
         to produce markdown.
     """
-    start_url = start_url.strip()  # Remove leading/trailing whitespace
+    start_url = start_url.strip()
     parsed_url = urlparse(start_url)
     if not parsed_url.scheme:
         start_url = "https://" + start_url

@@ -1,17 +1,15 @@
 from typing import List, Optional
 
 
-async def url_filter_tool(patterns: str):
+async def url_filter_tool(patterns: List[str]):
     """
-    Creates a URLPatternFilter instance from crawl4ai.
-
     This tool constructs a filter that allows crawling based on URL patterns.
     It's designed to be used by an LLM or a higher-level agent to specify
     which URLs should be included or excluded during a crawl based on
     wildcard or regex patterns.
 
     Args:
-        patterns (str): A string containing wildcard or regex patterns.
+        patterns (List[str]): A list of string containing wildcard or regex patterns.
                         URLs matching any of these patterns will be processed
                         by the crawler if this filter is applied.
                         Example: ".*example.com/products/.*,.*category/items/.*"
@@ -27,8 +25,6 @@ async def url_filter_tool(patterns: str):
 
 async def domain_filter_tool(allowed: List[str], blocked: List[str]):
     """
-    Creates a DomainFilter instance from crawl4ai.
-
     This tool constructs a filter that allows or blocks crawling based on domain names.
     It's useful for restricting the crawl to specific domains or preventing
     the crawler from accessing certain domains.
@@ -52,8 +48,6 @@ async def domain_filter_tool(allowed: List[str], blocked: List[str]):
 
 async def content_type_filter_tool(allowed: List[str]):
     """
-    Creates a ContentTypeFilter instance from crawl4ai.
-
     This tool constructs a filter that allows crawling based on the MIME content type
     of the web resources. It helps in focusing the crawl on specific types of
     content, such as HTML pages or PDF documents.
