@@ -111,7 +111,6 @@ async def _crawl_pages(
 async def _format_data_md(
     extracted_content: str,
     formatting_prompt: str,
-    extraction_schema: Type[BaseModel],
 ):
     """
     Formats markdown content into structured JSON using a Gemini LLM.
@@ -119,7 +118,6 @@ async def _format_data_md(
     Args:
         extracted_content: The markdown content to format.
         formatting_prompt: The system instruction for the LLM.
-        extraction_schema: The Pydantic model to enforce the output structure.
 
     Returns:
         A dictionary representing the extracted JSON data, or None if an error occurs.
@@ -136,7 +134,7 @@ async def _format_data_md(
             contents=f"Here is the input markdown: {extracted_content}",
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
-                response_schema=extraction_schema,
+                response_schema=list[ProductModel],
                 temperature=0.0,
                 system_instruction=formatting_prompt,
             ),
@@ -182,9 +180,7 @@ async def perform_bfs_extraction_workflow(
     print(f"Processing {len(scraped_pages)} scraped page(s) for extraction...")
     for res in scraped_pages:
         if res.markdown:
-            json_data = await _format_data_md(
-                res.markdown, FORMATTING_PROMPT, ProductModel
-            )
+            json_data = await _format_data_md(res.markdown, FORMATTING_PROMPT)
             if json_data:
                 all_extracted_data.append(json_data)
     return all_extracted_data
@@ -224,9 +220,7 @@ async def perform_dfs_extraction_workflow(
     print(f"Processing {len(scraped_pages)} scraped page(s) for extraction...")
     for res in scraped_pages:
         if res.markdown:
-            json_data = await _format_data_md(
-                res.markdown, FORMATTING_PROMPT, ProductModel
-            )
+            json_data = await _format_data_md(res.markdown, FORMATTING_PROMPT)
             if json_data:
                 all_extracted_data.append(json_data)
     return all_extracted_data
@@ -269,9 +263,7 @@ async def perform_best_first_extraction_workflow(
     print(f"Processing {len(scraped_pages)} scraped page(s) for extraction...")
     for res in scraped_pages:
         if res.markdown:
-            json_data = await _format_data_md(
-                res.markdown, FORMATTING_PROMPT, ProductModel
-            )
+            json_data = await _format_data_md(res.markdown, FORMATTING_PROMPT)
             if json_data:
                 all_extracted_data.append(json_data)
     return all_extracted_data

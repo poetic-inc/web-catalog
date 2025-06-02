@@ -9,17 +9,22 @@ async def url_filter_tool(patterns: List[str]):
     wildcard or regex patterns.
 
     Args:
-        patterns (List[str]): A list of string containing wildcard or regex patterns.
+        patterns (List[str]): A list of string to match using wildcard syntax or regex pattern.
                         URLs matching any of these patterns will be processed
                         by the crawler if this filter is applied.
-                        Example: ".*example.com/products/.*,.*category/items/.*"
+                        To use regex pattern, the pattern should resort true from at least one of the following condition:
+                            - start with `^`
+                            - end with `$`
+                            - contains `\d`
+                        Example: to match url with `shop`, you would do: *example.com/shop* (wildcard) or ^.*example\.com/shop.* (regex)
 
     Returns:
         dict: A dictionary representing the configuration for a URL pattern filter.
               This dictionary includes the filter type ("url_pattern") and the
               patterns string.
-              Example: `{"type": "url_pattern", "patterns": ".*example.com/products/.*"}`
+              Example: `{"type": "url_pattern", "patterns": "*example.com/products/*"}`
     """
+    print(f"Constructing URL filter for crawler...")
     return {"type": "url_pattern", "patterns": patterns}
 
 
@@ -43,6 +48,7 @@ async def domain_filter_tool(allowed: List[str], blocked: List[str]):
               allowed domains, and a list of blocked domains.
               Example: `{"type": "domain", "allowed_domains": ["example.com"], "blocked_domains": ["ads.example.com"]}`
     """
+    print(f"Constructing domain filter for crawler...")
     return {"type": "domain", "allowed_domains": allowed, "blocked_domains": blocked}
 
 
@@ -63,4 +69,5 @@ async def content_type_filter_tool(allowed: List[str]):
               of allowed MIME types.
               Example: `{"type": "content_type", "allowed_types": ["text/html"]}`
     """
+    print(f"Constructing content type filter for crawler...")
     return {"type": "content_type", "allowed_types": allowed}
