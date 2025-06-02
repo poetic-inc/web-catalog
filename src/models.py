@@ -6,7 +6,6 @@ from pydantic import BaseModel
 class Item(BaseModel):
     name: str
     price: str
-    url: str
 
 
 class Product(BaseModel):
@@ -21,5 +20,4 @@ class Page(BaseModel):
 
 class ProductModel(BaseModel):
     page_url: str
-    page_name: str
     products: List[Product]
